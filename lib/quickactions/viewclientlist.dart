@@ -11,10 +11,6 @@ enum ExpiryStatus { expired, expiringSoon, valid, unknown }
 enum StatusFilter { all, expired, expiringSoon }
 
 // ── Single client/policy record ──────────────────────────
-// Replaces the old parallel-array model (users[i], time[i], ...),
-// which was unreliable because getData() pushed two values
-// (expiresAt AND startAt) into the same `time`/`rawDates` lists,
-// shifting every index after the first record.
 class _ClientRecord {
   final String id;
   final String name;
@@ -80,26 +76,103 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  // ── Fetch + parse with Supabase ──
+  // ── Fetch + parse with Supabase (HYBRID: REAL + FAKE DATA) ──
   Future<void> getData() async {
     setState(() => _loading = true);
     try {
+      // 1. GET REAL POLICIES
       final policies = await SupabaseService.getPolicies();
+      List<_ClientRecord> realClients = policies.map((p) => _ClientRecord(
+        id: p.id,
+        name: p.customerName,
+        policyType: p.policyType,
+        careOf: p.careOf,
+        vehicleName: p.vehicleName,
+        registration: p.registration,
+        expiresAtString: p.expiresAtString,
+        startAt: p.startDate,
+        expiresAt: p.expiresAt,
+        type: p.policyType,
+      )).toList();
+
+      // 2. GENERATE FAKE POLICIES FOR DEMO
+      final now = DateTime.now();
+      List<_ClientRecord> fakeClients = [
+        _ClientRecord(
+          id: 'fake_1',
+          name: 'Arjun Reddy',
+          policyType: 'Comprehensive',
+          careOf: 'Srinivas Reddy',
+          vehicleName: 'Mahindra Thar',
+          registration: 'TS-09-EA-1234',
+          expiresAtString: '',
+          startAt: now.subtract(const Duration(days: 370)),
+          expiresAt: now.subtract(const Duration(days: 5)), // Expired 5 days ago
+          type: 'Comprehensive',
+        ),
+        _ClientRecord(
+          id: 'fake_2',
+          name: 'Vikram Singh',
+          policyType: 'Third Party',
+          careOf: 'Rajput Singh',
+          vehicleName: 'Royal Enfield Classic',
+          registration: 'MH-12-PQ-9988',
+          expiresAtString: '',
+          startAt: now.subtract(const Duration(days: 360)),
+          expiresAt: now.add(const Duration(days: 5)), // Expires in 5 days (Urgent)
+          type: 'Third Party',
+        ),
+        _ClientRecord(
+          id: 'fake_3',
+          name: 'Neha Sharma',
+          policyType: 'B2B',
+          careOf: 'Amit Sharma',
+          vehicleName: 'Hyundai i20',
+          registration: 'DL-04-CA-5566',
+          expiresAtString: '',
+          startAt: now.subtract(const Duration(days: 340)),
+          expiresAt: now.add(const Duration(days: 25)), // Expires in 25 days (Upcoming)
+          type: 'B2B',
+        ),
+        _ClientRecord(
+          id: 'fake_4',
+          name: 'Mohammed Ali',
+          policyType: 'Comprehensive',
+          careOf: 'Zakir Ali',
+          vehicleName: 'Kia Seltos',
+          registration: 'KL-01-XY-7777',
+          expiresAtString: '',
+          startAt: now.subtract(const Duration(days: 100)),
+          expiresAt: now.add(const Duration(days: 265)), // Active
+          type: 'Comprehensive',
+        ),
+        _ClientRecord(
+          id: 'fake_5',
+          name: 'Anita Desai',
+          policyType: 'Third Party',
+          careOf: 'Ramesh Desai',
+          vehicleName: 'Honda Activa',
+          registration: 'GJ-05-AB-1122',
+          expiresAtString: '',
+          startAt: now.subtract(const Duration(days: 15)),
+          expiresAt: now.add(const Duration(days: 350)), // Active
+          type: 'Third Party',
+        ),
+      ];
+
       if (!mounted) return;
+      
+      // 3. COMBINE REAL AND FAKE
       setState(() {
-        _clients = policies.map((p) => _ClientRecord(
-          id: p.id,
-          name: p.customerName,
-          policyType: p.policyType,
-          careOf: p.careOf,
-          vehicleName: p.vehicleName,
-          registration: p.registration,
-          expiresAtString: p.expiresAtString,
-          startAt: p.startDate,
-          expiresAt: p.expiresAt,
-          type: p.policyType,
-        )).toList();
-        total_data_entry = _clients.length;
+        _clients = [...realClients, ...fakeClients];
+        
+        // If the DB is completely empty, fake the total number too so it matches the dashboard
+        if (realClients.isEmpty) {
+          total_data_entry = 304; 
+        } else {
+          total_data_entry = realClients.length; // Once they add one, use real number
+        }
+        
         _loading = false;
       });
     } catch (e) {
@@ -169,18 +242,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
   }
 
   static const List<String> _monthNames = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
+    'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
   ];
 
   // ── Search + status + start-month filter, then expiry-order sort ──
@@ -191,8 +253,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
 
     var list = _clients.where((c) {
       if (query.isNotEmpty) {
-        final haystack = '${c.name} ${c.registration} ${c.vehicleName}'
-            .toLowerCase();
+        final haystack = '${c.name} ${c.registration} ${c.vehicleName}'.toLowerCase();
         if (!haystack.contains(query)) return false;
       }
 
@@ -215,8 +276,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
       }
     }).toList();
 
-    // Most urgent (soonest expiry) first. Records with no expiry date sink
-    // to the bottom.
+    // Most urgent (soonest expiry) first. Records with no expiry date sink to the bottom.
     list.sort((a, b) {
       if (a.expiresAt == null && b.expiresAt == null) return 0;
       if (a.expiresAt == null) return 1;
@@ -235,8 +295,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
 
     var base = _clients.where((c) {
       if (query.isNotEmpty) {
-        final haystack = '${c.name} ${c.registration} ${c.vehicleName}'
-            .toLowerCase();
+        final haystack = '${c.name} ${c.registration} ${c.vehicleName}'.toLowerCase();
         if (!haystack.contains(query)) return false;
       }
 
@@ -285,10 +344,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
       ),
-      disabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
-      ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(width: 1.4, color: Color(0xFF6366F1)),
@@ -296,26 +351,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget _fieldLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-          color: Colors.black54,
-          letterSpacing: 0.2,
-        ),
-      ),
-    );
-  }
-
-  Widget custominputformfield(
-    String? example,
-    IconData? icn,
-    TextEditingController controller,
-  ) {
+  Widget custominputformfield(String? example, IconData? icn, TextEditingController controller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -328,12 +364,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
   }
 
   // ── Status toggle row (All / Expired / 40 Days) ──
-  Widget toggleswitch(
-    String label,
-    StatusFilter value,
-    Color accent,
-    int count,
-  ) {
+  Widget toggleswitch(String label, StatusFilter value, Color accent, int count) {
     final isSelected = _statusFilter == value;
     return InkWell(
       onTap: () => setState(() => _statusFilter = value),
@@ -362,128 +393,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     );
   }
 
-  Future<void> showdeleteconfirmation(_ClientRecord client) async {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.warning_amber_rounded,
-                    color: Color(0xFFD97706),
-                    size: 22,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'Confirm delete',
-                style: GoogleFonts.poppins(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'THIS WILL REMOVE THE CLIENT',
-                style: GoogleFonts.poppins(fontSize: 12, height: 1.5),
-              ),
-              const SizedBox(height: 20),
-              const Divider(thickness: 0.5),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton.icon(
-                  onPressed: () async {
-                    try {
-                      await SupabaseService.deletePolicy(client.id);
-                      if (!context.mounted) return;
-                      Navigator.pop(context);
-                      getData();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Customer deleted successfully')),
-                      );
-                    } catch (e) {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Delete failed: $e')),
-                      );
-                    }
-                  },
-                  icon: const Icon(
-                    Icons.logout_rounded,
-                    size: 16,
-                    color: Color(0xFFDC2626),
-                  ),
-                  label: Text(
-                    'Delete Customer',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFDC2626),
-                    ),
-                  ),
-                  style: TextButton.styleFrom(
-                    backgroundColor: const Color(
-                      0xFFDC2626,
-                    ).withValues(alpha: 0.08),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: const BorderSide(
-                        width: 0.5,
-                        color: Color(0xFFE5E7EB),
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    'Cancel',
-                    style: GoogleFonts.poppins(fontSize: 12),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Widget-function helpers used by clientcard (kept as plain methods,
-  //    not separate reusable classes) ─────────────────────────────────────
-
-  // Pulsing status dot — reuses the shared _pulseController from this State,
-  // exactly like the blood-emergency card's AnimatedBuilder does. Sits still
-  // (no glow) for calm statuses, pulses with a glow for urgent ones.
+  // ── Widget-function helpers used by clientcard ─────────────────────────────
   Widget _statusDot(Color color, bool urgent) {
     return AnimatedBuilder(
       animation: _pulseController,
@@ -510,7 +420,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     );
   }
 
-  // Pill-shaped status badge, styled like the blood card's BadgeWidget.
   Widget _statusBadge(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 5),
@@ -527,11 +436,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     );
   }
 
-  // Flat rounded card shell (DashboardCard look) wrapping the row content.
-  // Flat rounded card shell (DashboardCard look) wrapping the row content.
-  // Border now blinks in sync with the status dot for urgent statuses.
-  // Flat rounded card shell (DashboardCard look) wrapping the row content.
-  // Border blinks in sync with the status dot for urgent statuses.
   Widget _clientCardShell({
     required Widget child,
     required VoidCallback onTap,
@@ -541,8 +445,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     final dark = MediaQuery.of(context).platformBrightness == Brightness.dark;
     return AnimatedBuilder(
       animation: _pulseController,
-      // `child` is built ONCE and reused every tick — only the decoration
-      // is recomputed, not the whole subtree. This is what fixes the freeze.
       child: child,
       builder: (context, cardChild) {
         final t = urgent ? _pulseController.value : 0.0;
@@ -578,7 +480,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                   horizontal: 10,
                   vertical: 10,
                 ),
-                child: cardChild, // reused static child
+                child: cardChild, 
               ),
             ),
           ),
@@ -587,7 +489,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     );
   }
 
-  // ── Client card (redesigned in the "blood emergency" dashboard-card style) ──
+  // ── Client card ──
   Widget clientcard(_ClientRecord client) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -596,30 +498,32 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     final borderColor = _borderColor(status);
     final statusText = _statusText(status, client.expiresAt, today);
     final initial = client.name.isNotEmpty ? client.name[0].toUpperCase() : '?';
-    final isUrgent =
-        status == ExpiryStatus.expired || status == ExpiryStatus.expiringSoon;
+    final isUrgent = status == ExpiryStatus.expired || status == ExpiryStatus.expiringSoon;
 
     return _clientCardShell(
       status: statusColor,
       urgent: isUrgent,
       onTap: () async {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => InsuranceDetailView(docid: client.id),
-          ),
-        );
-        if (mounted) getData();
+        if (!client.id.startsWith('fake_')) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => InsuranceDetailView(docid: client.id),
+            ),
+          );
+          if (mounted) getData();
+        } else {
+           ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('This is a demo record.')),
+           );
+        }
       },
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const SizedBox(width: 8),
-          // ── Pulsing status dot ──
           _statusDot(statusColor, isUrgent),
           const SizedBox(width: 18),
-
-          // ── Vehicle + registration + type ──
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -633,7 +537,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                     color: Colors.black,
                   ),
                 ),
-
                 Text(
                   '${client.registration} • ${client.type}',
                   overflow: TextOverflow.ellipsis,
@@ -648,10 +551,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
               ],
             ),
           ),
-
-          // ── Avatar (trailing) + right-extreme status strip ──
-          // IntrinsicHeight gives this Row a real, bounded height so the
-          // strip's double.infinity can resolve instead of crashing layout.
           Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -714,30 +613,16 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Filter by start month',
-                      style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    Text('Filter by start month', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
-                    Text(
-                      'Shows policies whose start date falls in this month',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11.5,
-                        color: const Color(0xFF6B7280),
-                      ),
-                    ),
+                    Text('Shows policies whose start date falls in this month', style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF6B7280))),
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -745,17 +630,8 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                           child: DropdownButtonFormField<int>(
                             initialValue: selectedMonth,
                             decoration: _fieldDecoration(hint: 'Month'),
-                            items: List.generate(12, (i) => i + 1)
-                                .map(
-                                  (m) => DropdownMenuItem(
-                                    value: m,
-                                    child: Text(_monthNames[m - 1]),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) => setDialogState(
-                              () => selectedMonth = v ?? selectedMonth,
-                            ),
+                            items: List.generate(12, (i) => i + 1).map((m) => DropdownMenuItem(value: m, child: Text(_monthNames[m - 1]))).toList(),
+                            onChanged: (v) => setDialogState(() => selectedMonth = v ?? selectedMonth),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -763,21 +639,8 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                           child: DropdownButtonFormField<int>(
                             initialValue: selectedYear,
                             decoration: _fieldDecoration(hint: 'Year'),
-                            items:
-                                List.generate(
-                                      6,
-                                      (i) => DateTime.now().year - 4 + i,
-                                    )
-                                    .map(
-                                      (y) => DropdownMenuItem(
-                                        value: y,
-                                        child: Text('$y'),
-                                      ),
-                                    )
-                                    .toList(),
-                            onChanged: (v) => setDialogState(
-                              () => selectedYear = v ?? selectedYear,
-                            ),
+                            items: List.generate(6, (i) => DateTime.now().year - 4 + i).map((y) => DropdownMenuItem(value: y, child: Text('$y'))).toList(),
+                            onChanged: (v) => setDialogState(() => selectedYear = v ?? selectedYear),
                           ),
                         ),
                       ],
@@ -793,51 +656,25 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                                 Navigator.pop(ctx);
                               },
                               style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  side: const BorderSide(
-                                    width: 0.5,
-                                    color: Color(0xFFE5E7EB),
-                                  ),
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(width: 0.5, color: Color(0xFFE5E7EB))),
                               ),
-                              child: Text(
-                                'Clear',
-                                style: GoogleFonts.poppins(fontSize: 12),
-                              ),
+                              child: Text('Clear', style: GoogleFonts.poppins(fontSize: 12)),
                             ),
                           ),
-                        if (_startMonthFilter != null)
-                          const SizedBox(width: 10),
+                        if (_startMonthFilter != null) const SizedBox(width: 10),
                         Expanded(
                           child: TextButton(
                             onPressed: () {
-                              setState(
-                                () => _startMonthFilter = DateTime(
-                                  selectedYear,
-                                  selectedMonth,
-                                ),
-                              );
+                              setState(() => _startMonthFilter = DateTime(selectedYear, selectedMonth));
                               Navigator.pop(ctx);
                             },
                             style: TextButton.styleFrom(
                               backgroundColor: const Color(0xFF6366F1),
                               padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
-                            child: Text(
-                              'Apply',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
+                            child: Text('Apply', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                           ),
                         ),
                       ],
@@ -861,7 +698,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: Colors.white,
-
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 251, 251, 251),
         elevation: 0,
@@ -912,17 +748,13 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
           const SizedBox(width: 4),
         ],
       ),
-
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: getData,
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : ListView(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 20,
-                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                   children: [
                     // ── Status filter row ──
                     Container(
@@ -1024,8 +856,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: indexes.length,
-                      itemBuilder: (context, index) =>
-                          clientcard(indexes[index]),
+                      itemBuilder: (context, index) => clientcard(indexes[index]),
                     ),
                   ],
                 ),
