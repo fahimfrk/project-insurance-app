@@ -49,14 +49,12 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
   int navIndex = 0;
   String selectedFilter = 'All';
   bool isRefreshing = false;
+  bool _loading = true;
 
   final List<String> filters = const ['All', 'Active', 'Expiring', 'Lapsed'];
 
   DashboardMetrics _metrics = const DashboardMetrics();
-  //List<Map<String, String>> _recentPolicies = [];
-  List<dynamic> recentPolicies = [];
-  List<dynamic> _recentPolicies = [];
-  bool _loading = true;
+  List<Map<String, String>> recentPolicies = [];
 
   @override
   void initState() {
@@ -64,14 +62,62 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
     _loadDashboardData();
   }
 
+  // =======================================================================
+  // HYBRID DATA LOADER: REAL DB + FAKE DEMO DATA
+  // =======================================================================
   Future<void> _loadDashboardData() async {
+    setState(() => _loading = true);
     try {
-      final metrics = await SupabaseService.getDashboardMetrics();
-      final recent = await SupabaseService.getRecentPolicies(limit: 6);
+      // 1. Fetch REAL data from Supabase
+      DashboardMetrics realMetrics = await SupabaseService.getDashboardMetrics();
+      List<Map<String, String>> realRecent = await SupabaseService.getRecentPolicies(limit: 6);
+
+      // 2. If DB is empty, use fake numbers for the demo
+      if (realMetrics.totalPolicies == 0) {
+        _metrics = const DashboardMetrics(
+          immediateAction: 8,
+          upcomingRenewals: 34,
+          lapsedPolicies: 12,
+          activePolicies: 250,
+          renewedThisMonth: 105,
+          totalPolicies: 304,
+        );
+      } else {
+        _metrics = realMetrics; // Use the real numbers!
+      }
+
+      // 3. Create some fake policies
+      final fakePolicies = [
+        {
+          'id': 'fake1',
+          'customer': 'Rahul Menon',
+          'type': 'Comprehensive',
+          'vehicle': 'Toyota Innova · KL-07-AB-1234',
+          'note': 'Expires in 3 days',
+          'status': 'urgent',
+        },
+        {
+          'id': 'fake2',
+          'customer': 'Priya Sharma',
+          'type': 'Third Party',
+          'vehicle': 'Maruti Swift · KL-01-CD-5678',
+          'note': 'Expires in 12 days',
+          'status': 'upcoming',
+        },
+        {
+          'id': 'fake3',
+          'customer': 'Anil Kumar',
+          'type': 'B2B',
+          'vehicle': 'Tata Nexon · KL-10-EF-9012',
+          'note': 'Lapsed 2 days ago',
+          'status': 'lapsed',
+        },
+      ];
+
+      // 4. Combine them! Real policies go at the top, fake ones fill the bottom
       if (mounted) {
         setState(() {
-          _metrics = metrics;
-          _recentPolicies = recent;
+          recentPolicies = [...realRecent, ...fakePolicies].take(6).toList();
           _loading = false;
         });
       }
@@ -139,7 +185,6 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
         height: 74,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-
           border: Border.all(color: colr.withValues(alpha: 0.3), width: 1.8),
           boxShadow: [
             BoxShadow(color: colr.withValues(alpha: 0.15), blurRadius: 8),
@@ -407,13 +452,17 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () {
-        if (item['id'] != null && item['id']!.isNotEmpty) {
+        if (item['id'] != null && !item['id']!.startsWith('fake')) {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => InsuranceDetailView(docid: item['id']!),
             ),
           ).then((_) => _loadDashboardData());
+        } else {
+           ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('This is a demo record.')),
+           );
         }
       },
       child: Container(
@@ -548,11 +597,7 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    // Auto theme detection: reads the device/system brightness directly from
-    // MediaQuery, so this dashboard automatically switches its light/dark
-    // palette whenever the system theme changes — no manual toggle needed.
-    final bool isDark =
-        MediaQuery.of(context).platformBrightness == Brightness.dark;
+    final bool isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
 
     final bgColor = isDark ? Color(0xFF0F1714) : Color(0xFFF6FBF8);
     final cardColor = isDark ? Color(0xFF1E1E1E) : Colors.white;
@@ -801,7 +846,7 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                       child: DashboardCard(
                         title: 'Expired Policies',
                         subtitle: 'Expired in last 30–90 Days',
-                        count: 2,
+                        count: _metrics.lapsedPolicies, 
                         color: Colors.red,
                         icon: Icons.cancel_outlined,
                       ),
@@ -812,7 +857,7 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                       child: DashboardCard(
                         title: 'Immediate Action',
                         subtitle: 'Expiring in 0–7 Days',
-                        count: 25,
+                        count: _metrics.immediateAction, 
                         color: const Color.fromARGB(255, 236, 117, 13),
                         icon: Icons.warning_rounded,
                       ),
@@ -821,11 +866,11 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                       width:
                           (MediaQuery.of(context).size.width - 12 * 2 - 10) / 2,
                       child: DashboardCard(
-                        title: 'Upcoming Renewels',
+                        title: 'Upcoming Renewals',
                         subtitle: 'Expiring in a month',
-                        count: 25,
+                        count: _metrics.upcomingRenewals, 
                         color: const Color.fromARGB(255, 7, 132, 117),
-                        icon: Icons.warning_rounded,
+                        icon: Icons.access_time_rounded,
                       ),
                     ),
                     SizedBox(
@@ -833,10 +878,10 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                           (MediaQuery.of(context).size.width - 12 * 2 - 10) / 2,
                       child: DashboardCard(
                         title: 'Renewed This Month',
-                        subtitle: '30 days',
-                        count: 25,
+                        subtitle: 'Last 30 days',
+                        count: _metrics.renewedThisMonth, 
                         color: const Color.fromARGB(255, 60, 168, 10),
-                        icon: Icons.warning_rounded,
+                        icon: Icons.verified_rounded,
                       ),
                     ),
                   ],
@@ -855,56 +900,32 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                   alignment: WrapAlignment.spaceAround,
                   children: [
                     quickaction(
-                      'Add      Customer',
+                      'Add Customer',
                       Icons.person_add_alt_1,
                       Color(0xFF3B82F6),
                       1,
                     ),
                     quickaction(
-                      'New           Policy',
+                      'New Policy',
                       Icons.add_box_outlined,
                       Color(0xFF059669),
                       2,
                     ),
                     quickaction(
-                      'Renew          Policy',
+                      'Renew Policy',
                       Icons.autorenew_rounded,
                       Color(0xFF8B5CF6),
                       3,
                     ),
                     quickaction(
-                      'File              Claim',
+                      'File Claim',
                       Icons.assignment_late_outlined,
                       Color(0xFFF59E0B),
                       4,
                     ),
-                    quickaction(
-                      'Reports',
-                      Icons.insert_chart_outlined_rounded,
-                      Color(0xFF14B8A6),
-                      5,
-                    ),
-                    quickaction(
-                      'Reports',
-                      Icons.insert_chart_outlined_rounded,
-                      Color.fromARGB(255, 184, 20, 135),
-                      6,
-                    ),
-                    quickaction(
-                      'Reports',
-                      Icons.insert_chart_outlined_rounded,
-                      Color.fromARGB(255, 56, 184, 20),
-                      7,
-                    ),
-                    quickaction(
-                      'Back Up',
-                      Icons.insert_chart_outlined_rounded,
-                      Color.fromARGB(255, 140, 20, 173),
-                      8,
-                    ),
                   ],
                 ),
-                SizedBox(height: 6),
+                SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -938,8 +959,6 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
     );
   }
 }
-
-//custom widgets
 
 // Custom widgets with theme support
 class custommainheading extends StatelessWidget {
@@ -983,8 +1002,6 @@ class custommainheading extends StatelessWidget {
     );
   }
 }
-
-//dashboard immediate info
 
 class DashboardCard extends StatelessWidget {
   final String title;
