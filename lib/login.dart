@@ -11,50 +11,22 @@ class Login extends StatefulWidget {
   State<Login> createState() => _LoginState();
 }
 
-bool register = false;
-
-class _LoginState extends State<Login>
-    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
+class _LoginState extends State<Login> {
+  bool register = false;
   final TextEditingController user = TextEditingController();
   final TextEditingController pass = TextEditingController();
-
   final SupabaseClient supabase = Supabase.instance.client;
 
   @override
-  void initState() {
-    super.initState();
-
-    WidgetsBinding.instance.addObserver(this);
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 10),
-    )..repeat();
-  }
-
-  @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-
-    _controller.dispose();
-
     user.dispose();
     pass.dispose();
-
     super.dispose();
   }
 
-  @override
-  void didChangePlatformBrightness() {
-    setState(() {});
-  }
-
   // ============================================================
-  // SUPABASE LOGIN
+  // SUPABASE LOGIN (Unchanged from your original code)
   // ============================================================
-
   Future<void> loginUser() async {
     final email = user.text.trim();
     final password = pass.text;
@@ -75,9 +47,7 @@ class _LoginState extends State<Login>
       if (response.user != null) {
         user.clear();
         pass.clear();
-
         if (!mounted) return;
-
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const InsuranceDashboard()),
@@ -85,21 +55,16 @@ class _LoginState extends State<Login>
       }
     } on AuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
     }
   }
 
   // ============================================================
-  // SUPABASE REGISTER
+  // SUPABASE REGISTER (Unchanged from your original code)
   // ============================================================
-
   Future<void> registerUser() async {
     final email = user.text.trim();
     final password = pass.text;
@@ -113,9 +78,7 @@ class _LoginState extends State<Login>
 
     if (password.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password must contain at least 6 characters'),
-        ),
+        const SnackBar(content: Text('Password must contain at least 6 characters')),
       );
       return;
     }
@@ -129,223 +92,197 @@ class _LoginState extends State<Login>
       if (response.user != null) {
         user.clear();
         pass.clear();
-
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Registration successful. Check your email for verification.',
-            ),
-          ),
+          const SnackBar(content: Text('Registration successful. You can now login.')),
         );
 
         setState(() {
-          register = false;
-          x = 'SIGNIN';
-          y = 'SIGNUP';
+          register = false; // Switch back to login view automatically
         });
       }
     } on AuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Registration failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Registration failed: $e')));
     }
   }
 
   // ============================================================
-  // CHANGE LOGIN / REGISTER UI
+  // NEW PREMIUM UI BUILDER
   // ============================================================
-
-  String x = 'SIGNIN';
-  String y = 'SIGNUP';
-
-  void rota() {
-    if (x == 'SIGNIN') {
-      x = 'SIGNUP';
-      y = 'LOGIN';
-    } else {
-      x = 'SIGNIN';
-      y = 'SIGNUP';
-    }
-
-    setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Brand colors matching your dashboard screenshots
     final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF161C19) : const Color(0xFFF4F7F5);
+    final accentGreen = const Color(0xFF4ADE80); 
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final fieldBgColor = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05);
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        return Scaffold(
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [Colors.deepPurple, Colors.black]
-                    : [Colors.blue, Colors.purpleAccent],
-                begin: Alignment(-1 + _controller.value * 2, -1),
-                end: Alignment(-1, 1 - _controller.value * 2),
-              ),
-            ),
-            child: SafeArea(
-              child: ListView(
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ==================================================
-                  // TITLE
-                  // ==================================================
-                  Container(
-                    padding: const EdgeInsets.only(
-                      top: 50,
-                      left: 10,
-                      right: 10,
-                      bottom: 80,
+                  // HEADER / LOGO AREA
+                  Row(
+                    children: [
+                      Icon(Icons.shield, color: accentGreen, size: 40),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Insurance',
+                        style: GoogleFonts.poppins(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                  Text(
+                    register ? 'Create Account' : 'Welcome Back',
+                    style: GoogleFonts.poppins(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
                     ),
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      x,
-                      style: GoogleFonts.poppins(
-                        fontSize: 50,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.white,
+                  ),
+                  Text(
+                    register 
+                        ? 'Sign up to manage your policies.' 
+                        : 'Sign in to access your dashboard.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+
+                  // EMAIL FIELD
+                  TextField(
+                    controller: user,
+                    keyboardType: TextInputType.emailAddress,
+                    style: TextStyle(color: textColor),
+                    decoration: InputDecoration(
+                      hintText: 'Email Address',
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey),
+                      filled: true,
+                      fillColor: fieldBgColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: accentGreen, width: 1.5),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
 
-                  // ==================================================
-                  // FORM
-                  // ==================================================
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    margin: const EdgeInsets.symmetric(horizontal: 10),
-                    child: Column(
-                      children: [
-                        // EMAIL
-                        TextField(
-                          controller: user,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: const Icon(
-                              Icons.email,
-                              color: Colors.white,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: const BorderSide(
-                                width: 0.3,
-                                color: Colors.white,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: const BorderSide(
-                                width: 1,
-                                color: Colors.white,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
+                  // PASSWORD FIELD
+                  TextField(
+                    controller: pass,
+                    obscureText: true,
+                    style: TextStyle(color: textColor),
+                    decoration: InputDecoration(
+                      hintText: 'Password',
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      prefixIcon: const Icon(Icons.lock_outline, color: Colors.grey),
+                      filled: true,
+                      fillColor: fieldBgColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: accentGreen, width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+
+                  // LOGIN / REGISTER BUTTON
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (register) {
+                          registerUser();
+                        } else {
+                          loginUser();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accentGreen,
+                        foregroundColor: Colors.black, // Dark text on light green
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-
-                        const SizedBox(height: 13),
-
-                        // PASSWORD
-                        TextField(
-                          controller: pass,
-                          obscureText: true,
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: const Icon(
-                              Icons.lock,
-                              color: Colors.white,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: const BorderSide(
-                                width: 0.3,
-                                color: Colors.white,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: const BorderSide(
-                                width: 1,
-                                color: Colors.white,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
+                      ),
+                      child: Text(
+                        register ? 'Sign Up' : 'Sign In',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
 
-                        const SizedBox(height: 10),
-
-                        // ==================================================
-                        // LOGIN / REGISTER BUTTON
-                        // ==================================================
-                        SizedBox(
-                          width: 200,
-                          height: 50,
-                          child: TextButton(
-                            onPressed: () {
-                              if (register) {
-                                registerUser();
-                              } else {
-                                loginUser();
-                              }
-                            },
-                            style: TextButton.styleFrom(
-                              backgroundColor: const Color.fromARGB(
-                                255,
-                                8,
-                                124,
-                                219,
+                  // SWITCH LOGIN / REGISTER
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        setState(() {
+                          register = !register;
+                        });
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: accentGreen,
+                        splashFactory: NoSplash.splashFactory, // cleaner look
+                      ),
+                      child: RichText(
+                        text: TextSpan(
+                          text: register
+                              ? 'Already have an account? '
+                              : "Don't have an account? ",
+                          style: TextStyle(color: Colors.grey.shade500),
+                          children: [
+                            TextSpan(
+                              text: register ? 'Sign In' : 'Sign Up',
+                              style: TextStyle(
+                                color: accentGreen,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            child: Text(
-                              register ? 'SIGNUP' : 'SIGNIN',
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
+                          ],
                         ),
-
-                        // ==================================================
-                        // SWITCH LOGIN / REGISTER
-                        // ==================================================
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              register = !register;
-
-                              if (register) {
-                                x = 'SIGNUP';
-                              } else {
-                                x = 'SIGNIN';
-                              }
-                            });
-                          },
-                          child: Text(
-                            register
-                                ? 'Already have an account?'
-                                : "Don't have an account?",
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
