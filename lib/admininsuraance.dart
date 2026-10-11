@@ -53,7 +53,9 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
   final List<String> filters = const ['All', 'Active', 'Expiring', 'Lapsed'];
 
   DashboardMetrics _metrics = const DashboardMetrics();
-  List<Map<String, String>> _recentPolicies = [];
+  //List<Map<String, String>> _recentPolicies = [];
+  List<dynamic> recentPolicies = [];
+  List<dynamic> _recentPolicies = [];
   bool _loading = true;
 
   @override
