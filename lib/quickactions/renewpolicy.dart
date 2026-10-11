@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:insurance/services/supabase_service.dart';
 
 /// ---------------------------------------------------------------------
 /// RENEW POLICY SCREEN
@@ -84,20 +85,43 @@ class _RenewPolicyScreenState extends State<RenewPolicyScreen> {
     super.dispose();
   }
 
-  void _lookupPolicy() {
-    if (_searchCtrl.text.trim().isEmpty) {
+  Future<void> _lookupPolicy() async {
+    final q = _searchCtrl.text.trim();
+    if (q.isEmpty) {
       _showSnack('Enter a policy number or vehicle number to search');
       return;
     }
-    // TODO: replace with real backend lookup
-    setState(() {
-      _policyFound = true;
-      _ncbSlab = _existingPolicy['previousNcb']!;
-      _newIdvCtrl.text = _existingPolicy['previousIdv']!.replaceAll(
-        RegExp(r'[^0-9]'),
-        '',
-      );
-    });
+
+    try {
+      final policy = await SupabaseService.lookupPolicy(q);
+      if (policy != null) {
+        setState(() {
+          _policyFound = true;
+          _existingPolicy['policyId'] = policy.id;
+          _existingPolicy['policyNumber'] = policy.id.length >= 8
+              ? 'POL-${policy.id.substring(0, 8).toUpperCase()}'
+              : policy.id;
+          _existingPolicy['customer'] = policy.customerName;
+          _existingPolicy['vehicle'] =
+              '${policy.brand} ${policy.model} · ${policy.registration}';
+          _existingPolicy['previousInsurer'] = policy.insuranceProvider;
+          _existingPolicy['expiryDate'] = policy.expiresAtString.isNotEmpty
+              ? policy.expiresAtString
+              : (policy.expiresAt != null
+                  ? '${policy.expiresAt!.day}/${policy.expiresAt!.month}/${policy.expiresAt!.year}'
+                  : 'N/A');
+          _existingPolicy['previousNcb'] = '25%';
+          _existingPolicy['previousIdv'] =
+              policy.idv.isNotEmpty ? '₹${policy.idv}' : '₹8,50,000';
+          _ncbSlab = '25%';
+          _newIdvCtrl.text = policy.idv.isNotEmpty ? policy.idv : '850000';
+        });
+      } else {
+        _showSnack('No policy found matching "$q"');
+      }
+    } catch (e) {
+      _showSnack('Search failed: $e');
+    }
   }
 
   Future<void> _pickStartDate() async {
@@ -111,7 +135,7 @@ class _RenewPolicyScreenState extends State<RenewPolicyScreen> {
     if (picked != null) setState(() => _renewalStartDate = picked);
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_policyFound) {
       _showSnack('Please search and select a policy first');
       return;
@@ -138,11 +162,43 @@ class _RenewPolicyScreenState extends State<RenewPolicyScreen> {
         'paymentMode': _paymentMode,
       };
 
-      // TODO: persist record to backend / local DB
-      debugPrint(record.toString());
+      final policyId = _existingPolicy['policyId'] ?? '';
+      final newExpiry = DateTime(
+        _renewalStartDate!.year + 1,
+        _renewalStartDate!.month,
+        _renewalStartDate!.day,
+      );
 
-      _showSnack('Policy renewed successfully');
-      Navigator.of(context).maybePop(record);
+      try {
+        await SupabaseService.renewPolicy(
+          policyId: policyId,
+          renewalDetails: {
+            'policy_number': _existingPolicy['policyNumber'],
+            'customer_name': _existingPolicy['customer'],
+            'ncb_applied': _ncbSlab,
+            'had_claim_last_year': _hadClaimLastYear,
+            'new_idv': _newIdvCtrl.text.trim(),
+            'coverage_type': _coverageType,
+            'od_premium': _odPremium,
+            'tp_premium': _tpPremium,
+            'add_on_premium': _addOnPremium,
+            'ncb_discount': _ncbDiscount,
+            'gst': _gst,
+            'total_premium': _totalPremium,
+            'renewal_start_date': _renewalStartDate!.toIso8601String(),
+            'payment_mode': _paymentMode,
+          },
+          newStartDate: _renewalStartDate,
+          newExpiryDate: newExpiry,
+        );
+
+        if (!mounted) return;
+        _showSnack('Policy renewed successfully in Supabase');
+        Navigator.of(context).maybePop(record);
+      } catch (e) {
+        if (!mounted) return;
+        _showSnack('Renewal failed: $e');
+      }
     }
   }
 

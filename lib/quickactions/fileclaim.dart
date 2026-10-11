@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:insurance/services/supabase_service.dart';
 
 /// ---------------------------------------------------------------------
 /// FILE CLAIM SCREEN
@@ -82,7 +83,7 @@ class _FileClaimScreenState extends State<FileClaimScreen> {
     if (picked != null) setState(() => _incidentTime = picked);
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
       if (_claimType == null) {
         _showSnack('Please select a claim type');
@@ -93,30 +94,34 @@ class _FileClaimScreenState extends State<FileClaimScreen> {
         return;
       }
 
-      final record = {
-        'policyNumber': _policyNumberCtrl.text.trim(),
-        'claimType': _claimType,
-        'incidentDate': _incidentDate!.toIso8601String(),
-        'incidentTime': _incidentTime?.format(context),
+      final claimPayload = {
+        'policy_number': _policyNumberCtrl.text.trim(),
+        'claim_type': _claimType,
+        'incident_date': _incidentDate!.toIso8601String(),
+        'incident_time': _incidentTime?.format(context),
         'location': _locationCtrl.text.trim(),
         'description': _descriptionCtrl.text.trim(),
-        'estimatedLoss': _estimatedLossCtrl.text.trim(),
-        'firNumber': _firNumberCtrl.text.trim(),
-        'thirdPartyInvolved': _thirdPartyInvolved,
-        'injuriesReported': _injuriesReported,
-        'contactPhone': _contactPhoneCtrl.text.trim(),
-        'preferredGarageOrHospital': _preferredGarageCtrl.text.trim(),
-        'documentsReady': _documents.entries
+        'estimated_loss': _estimatedLossCtrl.text.trim(),
+        'fir_number': _firNumberCtrl.text.trim(),
+        'third_party_involved': _thirdPartyInvolved,
+        'injuries_reported': _injuriesReported,
+        'contact_phone': _contactPhoneCtrl.text.trim(),
+        'preferred_garage': _preferredGarageCtrl.text.trim(),
+        'documents': _documents.entries
             .where((e) => e.value)
             .map((e) => e.key)
             .toList(),
       };
 
-      // TODO: persist record + uploaded files to backend / local DB
-      debugPrint(record.toString());
-
-      _showSnack('Claim registered successfully');
-      Navigator.of(context).maybePop(record);
+      try {
+        await SupabaseService.createClaim(claimPayload);
+        if (!mounted) return;
+        _showSnack('Claim registered successfully in Supabase');
+        Navigator.of(context).maybePop(claimPayload);
+      } catch (e) {
+        if (!mounted) return;
+        _showSnack('Failed to register claim: $e');
+      }
     }
   }
 

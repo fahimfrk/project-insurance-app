@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:insurance/quickactions/add_customer.dart';
+import 'package:insurance/services/supabase_service.dart';
 
 class InsuranceDetailView extends StatefulWidget {
   final String docid;
@@ -62,7 +63,7 @@ class _InsuranceDetailViewState extends State<InsuranceDetailView> {
   @override
   void initState() {
     super.initState();
-    _loadExampleData();
+    _loadData();
   }
 
   @override
@@ -70,39 +71,56 @@ class _InsuranceDetailViewState extends State<InsuranceDetailView> {
     super.dispose();
   }
 
-  // ── Example data (replaces the Firestore read) ───────────────────────────
-  // Change expiresAt below to test the three states:
-  //   +200 days → ACTIVE, +25 days → EXPIRING SOON, -5 days → EXPIRED
-  Future<void> _loadExampleData() async {
-    final now = DateTime.now();
-    final start = _dayOnly(now).subtract(const Duration(days: 340));
-    final end = _dayOnly(now).add(const Duration(days: 25));
+  // ── Supabase Policy Load ──────────────────────────────────────────────────
+  Future<void> _loadData() async {
+    setState(() => loading = true);
+    try {
+      final policy = await SupabaseService.getPolicyById(widget.docid);
+      if (!mounted) return;
+      if (policy == null) {
+        setState(() {
+          loading = false;
+          notFound = true;
+        });
+        return;
+      }
 
-    if (!mounted) return;
-    setState(() {
-      brand = 'Maruti Suzuki';
-      model = 'Swift VXi';
-      year = '2021';
-      registration = 'KL 01 AB 1234';
-      customername = 'Rahul Menon';
-      careoff = 'Suresh Menon';
-      phone = '9876543210';
-      Insuranceprovider = 'New India Insurance';
-      providercode = 'Rayid';
-      policytype = 'Comprehensive';
-      expensecategory = 'Vehicle Insurance';
-      note = 'Customer prefers a reminder call a week before expiry.';
-      startAt = start;
-      expiresAt = end;
-      uploadedAt = now.subtract(const Duration(days: 340, hours: 3));
-      startdate = _fmtSlash(start);
-      enddate = _fmtSlash(end);
-      loading = false;
-      notFound = false;
-    });
+      setState(() {
+        brand = policy.brand;
+        model = policy.model;
+        year = policy.year;
+        registration = policy.registration;
+        customername = policy.customerName;
+        careoff = policy.careOf;
+        phone = policy.phone;
+        Insuranceprovider = policy.insuranceProvider;
+        providercode = policy.providerCode;
+        policytype = policy.policyType;
+        expensecategory = 'Vehicle Insurance';
+        note = policy.vehicleNote.isNotEmpty ? policy.vehicleNote : policy.note;
+        startAt = policy.startDate;
+        expiresAt = policy.expiresAt;
+        uploadedAt = policy.createdAt ?? DateTime.now();
+        startdate = policy.startDateString.isNotEmpty
+            ? policy.startDateString
+            : (policy.startDate != null ? _fmtSlash(policy.startDate!) : '');
+        enddate = policy.expiresAtString.isNotEmpty
+            ? policy.expiresAtString
+            : (policy.expiresAt != null ? _fmtSlash(policy.expiresAt!) : '');
+        loading = false;
+        notFound = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        loading = false;
+        notFound = true;
+      });
+      _snack('Error loading policy: $e');
+    }
   }
 
-  // ── Delete (Firestore call removed, still behind a confirmation) ─────────
+  // ── Delete from Supabase ──────────────────────────────────────────────────
   Future<void> _confirmDelete() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -140,10 +158,11 @@ class _InsuranceDetailViewState extends State<InsuranceDetailView> {
     if (ok != true) return;
 
     try {
+      await SupabaseService.deletePolicy(widget.docid);
       if (!mounted) return;
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } catch (e) {
-      if (mounted) _snack(e.toString());
+      if (mounted) _snack('Failed to delete: $e');
     }
   }
 
@@ -304,7 +323,7 @@ class _InsuranceDetailViewState extends State<InsuranceDetailView> {
                   ),
                 );
                 // Reload so the page shows whatever was just edited.
-                if (mounted) _loadExampleData();
+                if (mounted) _loadData();
               },
               style: IconButton.styleFrom(
                 backgroundColor: primaryGreen.withValues(alpha: 0.10),
@@ -331,7 +350,7 @@ class _InsuranceDetailViewState extends State<InsuranceDetailView> {
             ? _emptyState()
             : RefreshIndicator(
                 color: primaryGreen,
-                onRefresh: _loadExampleData,
+                onRefresh: _loadData,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -1368,15 +1387,30 @@ class _RenewalSheetState extends State<_RenewalSheet> {
     };
 
     try {
-      // Simulated save (replaces the Firestore update).
-      await Future.delayed(const Duration(milliseconds: 600));
+      await SupabaseService.renewPolicy(
+        policyId: widget.docid,
+        renewalDetails: {
+          'policy_number': widget.docid,
+          'ncb_applied': '25%',
+          'new_idv': '',
+          'coverage_type': 'Comprehensive',
+          'total_premium': 0,
+          'renewal_start_date': _startDate!.toIso8601String(),
+          'payment_mode': 'UPI',
+        },
+        newStartDate: _startDate,
+        newExpiryDate: _endDate,
+        newProvider: _providerName,
+        newProviderCode: _codeCtrl.text.trim(),
+        newNote: _noteCtrl.text.trim(),
+      );
       if (mounted) Navigator.pop(context, data);
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text('Renewal failed: $e'),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:insurance/quickactions/detailedclientview.dart';
+import 'package:insurance/services/supabase_service.dart';
 
 // ── Expiry status classification ─────────────────────────
 // expiringSoon = expires within the next 40 days
@@ -79,8 +80,37 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  // ── Fetch + parse (fixed indexing bug from the old version) ──
-  Future<void> getData() async {}
+  // ── Fetch + parse with Supabase ──
+  Future<void> getData() async {
+    setState(() => _loading = true);
+    try {
+      final policies = await SupabaseService.getPolicies();
+      if (!mounted) return;
+      setState(() {
+        _clients = policies.map((p) => _ClientRecord(
+          id: p.id,
+          name: p.customerName,
+          policyType: p.policyType,
+          careOf: p.careOf,
+          vehicleName: p.vehicleName,
+          registration: p.registration,
+          expiresAtString: p.expiresAtString,
+          startAt: p.startDate,
+          expiresAt: p.expiresAt,
+          type: p.policyType,
+        )).toList();
+        total_data_entry = _clients.length;
+        _loading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load clients: $e')),
+        );
+      }
+    }
+  }
 
   // ── Status classification ─────────────────────────────
   ExpiryStatus _classify(DateTime? expiresAt, DateTime today) {
@@ -377,7 +407,22 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
               SizedBox(
                 width: double.infinity,
                 child: TextButton.icon(
-                  onPressed: () async {},
+                  onPressed: () async {
+                    try {
+                      await SupabaseService.deletePolicy(client.id);
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                      getData();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Customer deleted successfully')),
+                      );
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Delete failed: $e')),
+                      );
+                    }
+                  },
                   icon: const Icon(
                     Icons.logout_rounded,
                     size: 16,
@@ -557,13 +602,14 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     return _clientCardShell(
       status: statusColor,
       urgent: isUrgent,
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => InsuranceDetailView(docid: client.id),
           ),
         );
+        if (mounted) getData();
       },
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,

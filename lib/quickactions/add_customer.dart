@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:insurance/services/supabase_service.dart';
 
 // ============================================================================
 // ADD / EDIT INSURANCE CUSTOMER (Multi-step)
@@ -24,7 +25,6 @@ class _addcustomerState extends State<addcustomer> {
   static const double _pagePadding = 20;
   static const double _radius = 14;
 
-  static const String _collection = 'insuranceaddcustomer';
   static const String _other = 'Other';
   static const List<String> _providers = [
     'New India Insurance',
@@ -195,12 +195,93 @@ class _addcustomerState extends State<addcustomer> {
     if (_step > 0) _goTo(_step - 1);
   }
 
-  // ── Firestore ────────────────────────────────────────────────────────────
+  // ── Supabase Backend ─────────────────────────────────────────────────────
   Future<void> _load() async {
     setState(() => _loading = true);
+    try {
+      final policy = await SupabaseService.getPolicyById(widget.docid);
+      if (policy != null && mounted) {
+        _nameCtrl.text = policy.customerName;
+        _careOfCtrl.text = policy.careOf;
+        _phoneCtrl.text = policy.phone;
+        _brandCtrl.text = policy.brand;
+        _modelCtrl.text = policy.model;
+        _yearCtrl.text = policy.year;
+        _regCtrl.text = policy.registration;
+        _noteCtrl.text = policy.vehicleNote.isNotEmpty ? policy.vehicleNote : policy.note;
+
+        if (_providers.contains(policy.insuranceProvider)) {
+          _provider = policy.insuranceProvider;
+        } else if (policy.insuranceProvider.isNotEmpty) {
+          _provider = _other;
+          _customProviderCtrl.text = policy.insuranceProvider;
+        }
+
+        _codeProviderCtrl.text = policy.providerCode;
+
+        if (_policyTypes.contains(policy.policyType)) {
+          _policyType = policy.policyType;
+        } else if (policy.policyType.isNotEmpty) {
+          _policyType = policy.policyType;
+        }
+
+        _startDate = policy.startDate;
+        _endDate = policy.expiresAt;
+        if (_startDate != null) _startCtrl.text = _fmt(_startDate!);
+        if (_endDate != null) _endCtrl.text = _fmt(_endDate!);
+      }
+    } catch (e) {
+      if (mounted) _snack('Failed to load customer: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
-  Future<void> _save() async {}
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+
+    final payload = <String, dynamic>{
+      'customer_name': _nameCtrl.text.trim(),
+      'care_of': _careOfCtrl.text.trim(),
+      'phone': _phoneCtrl.text.trim(),
+      'brand': _brandCtrl.text.trim(),
+      'model': _modelCtrl.text.trim(),
+      'year': _yearCtrl.text.trim(),
+      'registration': _regCtrl.text.trim(),
+      'vehicle_note': _noteCtrl.text.trim(),
+      'insurance_provider': _providerName,
+      'provider_code': _codeProviderCtrl.text.trim(),
+      'policy_type': _policyType ?? 'Comprehensive',
+      if (_startDate != null) 'start_date': _startDate!.toIso8601String(),
+      if (_endDate != null) 'expires_at': _endDate!.toIso8601String(),
+      'start_date_string': _startCtrl.text.trim(),
+      'expires_at_string': _endCtrl.text.trim(),
+      'note': _noteCtrl.text.trim(),
+    };
+
+    try {
+      if (widget.mode == 1 && widget.docid.isNotEmpty) {
+        await SupabaseService.updatePolicy(widget.docid, payload);
+        if (mounted) {
+          await _showSuccess('Customer & policy updated successfully.');
+        }
+      } else {
+        await SupabaseService.createPolicy(payload);
+        if (mounted) {
+          await _showSuccess('New customer & policy created successfully.');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _snack('Error saving: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
 
   Future<void> _showSuccess(String message) {
     return showDialog<void>(
