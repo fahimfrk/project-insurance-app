@@ -387,7 +387,7 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
     );
   }
 
-  void _showSettingsDialog() {
+void _showSettingsDialog() {
     final email = SupabaseService.currentUserEmail ?? 'Not logged in';
     final name = SupabaseService.currentUserName;
     showDialog(
@@ -398,7 +398,14 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
           children: [
             Icon(Icons.settings_outlined, color: Color(0xFF059669)),
             SizedBox(width: 10),
-            Text('Account & Backend'),
+            // FIX: Added Expanded here so it doesn't overflow on smaller screens
+            Expanded(
+              child: Text(
+                'Account & Backend',
+                style: TextStyle(fontSize: 18),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: Column(
@@ -412,7 +419,12 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
             const Divider(),
             const SizedBox(height: 8),
             const Text('Backend: Supabase Cloud', style: TextStyle(fontWeight: FontWeight.w600)),
-            const Text('Project: xpdtgngkkjihmconczuy', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 4),
+            // FIX: Let the long ID wrap to the next line naturally
+            const Text(
+              'Project: xpdtgngkkjihmconczuy', 
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -446,7 +458,6 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
       ),
     );
   }
-
   Widget _recentPolicyTile(Map<String, String> item, bool isDark) {
     final color = _statusColor(item['status'] ?? 'active');
     return InkWell(
