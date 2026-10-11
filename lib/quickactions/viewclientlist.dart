@@ -4,13 +4,9 @@ import 'package:insurance/quickactions/detailedclientview.dart';
 import 'package:insurance/services/supabase_service.dart';
 
 // ── Expiry status classification ─────────────────────────
-// expiringSoon = expires within the next 40 days
 enum ExpiryStatus { expired, expiringSoon, valid, unknown }
-
-// ── Status filter (drives the toggle row) ────────────────
 enum StatusFilter { all, expired, expiringSoon }
 
-// ── Single client/policy record ──────────────────────────
 class _ClientRecord {
   final String id;
   final String name;
@@ -46,16 +42,13 @@ class Sales extends StatefulWidget {
 class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
   TextEditingController search = TextEditingController();
 
-  // ── Data ───────────────────────────────────────────────
   List<_ClientRecord> _clients = [];
   bool _loading = true;
   int total_data_entry = 0;
 
-  // ── Filter state ───────────────────────────────────────
   StatusFilter _statusFilter = StatusFilter.all;
-  DateTime? _startMonthFilter; // year+month only; null = all time
+  DateTime? _startMonthFilter; 
 
-  // ── Shared pulse animation for the client-card status dot ──
   late final AnimationController _pulseController;
 
   @override
@@ -76,11 +69,9 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  // ── Fetch + parse with Supabase (HYBRID: REAL + FAKE DATA) ──
   Future<void> getData() async {
     setState(() => _loading = true);
     try {
-      // 1. GET REAL POLICIES
       final policies = await SupabaseService.getPolicies();
       List<_ClientRecord> realClients = policies.map((p) => _ClientRecord(
         id: p.id,
@@ -95,7 +86,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
         type: p.policyType,
       )).toList();
 
-      // 2. GENERATE FAKE POLICIES FOR DEMO
       final now = DateTime.now();
       List<_ClientRecord> fakeClients = [
         _ClientRecord(
@@ -107,7 +97,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
           registration: 'TS-09-EA-1234',
           expiresAtString: '',
           startAt: now.subtract(const Duration(days: 370)),
-          expiresAt: now.subtract(const Duration(days: 5)), // Expired 5 days ago
+          expiresAt: now.subtract(const Duration(days: 5)), 
           type: 'Comprehensive',
         ),
         _ClientRecord(
@@ -119,7 +109,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
           registration: 'MH-12-PQ-9988',
           expiresAtString: '',
           startAt: now.subtract(const Duration(days: 360)),
-          expiresAt: now.add(const Duration(days: 5)), // Expires in 5 days (Urgent)
+          expiresAt: now.add(const Duration(days: 5)), 
           type: 'Third Party',
         ),
         _ClientRecord(
@@ -131,7 +121,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
           registration: 'DL-04-CA-5566',
           expiresAtString: '',
           startAt: now.subtract(const Duration(days: 340)),
-          expiresAt: now.add(const Duration(days: 25)), // Expires in 25 days (Upcoming)
+          expiresAt: now.add(const Duration(days: 25)), 
           type: 'B2B',
         ),
         _ClientRecord(
@@ -143,7 +133,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
           registration: 'KL-01-XY-7777',
           expiresAtString: '',
           startAt: now.subtract(const Duration(days: 100)),
-          expiresAt: now.add(const Duration(days: 265)), // Active
+          expiresAt: now.add(const Duration(days: 265)), 
           type: 'Comprehensive',
         ),
         _ClientRecord(
@@ -155,24 +145,20 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
           registration: 'GJ-05-AB-1122',
           expiresAtString: '',
           startAt: now.subtract(const Duration(days: 15)),
-          expiresAt: now.add(const Duration(days: 350)), // Active
+          expiresAt: now.add(const Duration(days: 350)), 
           type: 'Third Party',
         ),
       ];
 
       if (!mounted) return;
       
-      // 3. COMBINE REAL AND FAKE
       setState(() {
         _clients = [...realClients, ...fakeClients];
-        
-        // If the DB is completely empty, fake the total number too so it matches the dashboard
         if (realClients.isEmpty) {
           total_data_entry = 304; 
         } else {
-          total_data_entry = realClients.length; // Once they add one, use real number
+          total_data_entry = realClients.length; 
         }
-        
         _loading = false;
       });
     } catch (e) {
@@ -185,7 +171,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     }
   }
 
-  // ── Status classification ─────────────────────────────
   ExpiryStatus _classify(DateTime? expiresAt, DateTime today) {
     if (expiresAt == null) return ExpiryStatus.unknown;
     final d = DateTime(expiresAt.year, expiresAt.month, expiresAt.day);
@@ -198,17 +183,16 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
   Color _statusColor(ExpiryStatus status) {
     switch (status) {
       case ExpiryStatus.expired:
-        return const Color.fromARGB(255, 242, 3, 3); // red
+        return const Color.fromARGB(255, 242, 3, 3);
       case ExpiryStatus.expiringSoon:
-        return const Color.fromARGB(255, 255, 124, 2); // orange
+        return const Color.fromARGB(255, 255, 124, 2);
       case ExpiryStatus.valid:
-        return const Color.fromARGB(255, 16, 165, 5); // neutral grey (no green)
+        return const Color.fromARGB(255, 16, 165, 5); 
       case ExpiryStatus.unknown:
-        return const Color(0xFF9CA3AF); // grey
+        return const Color(0xFF9CA3AF);
     }
   }
 
-  // Only expired / expiring-soon clients get a coloured border
   Color? _borderColor(ExpiryStatus status) {
     if (status == ExpiryStatus.expired || status == ExpiryStatus.expiringSoon) {
       return _statusColor(status);
@@ -216,7 +200,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     return null;
   }
 
-  // e.g. 23/9/26
   String _fmtDate(DateTime d) {
     final yy = (d.year % 100).toString().padLeft(2, '0');
     return '${d.day}/${d.month}/$yy';
@@ -245,7 +228,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',
   ];
 
-  // ── Search + status + start-month filter, then expiry-order sort ──
   List<_ClientRecord> get _visibleClients {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -276,7 +258,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
       }
     }).toList();
 
-    // Most urgent (soonest expiry) first. Records with no expiry date sink to the bottom.
     list.sort((a, b) {
       if (a.expiresAt == null && b.expiresAt == null) return 0;
       if (a.expiresAt == null) return 1;
@@ -287,7 +268,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     return list;
   }
 
-  // ── Counts for the toggle row (respects search + month filter, not status) ──
   Map<StatusFilter, int> get _statusCounts {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -326,46 +306,52 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     };
   }
 
-  InputDecoration _fieldDecoration({String? hint, IconData? suffix}) {
+  InputDecoration _fieldDecoration(bool isDark, {String? hint, IconData? suffix}) {
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB);
+    final textColor = isDark ? Colors.white54 : Colors.black38;
+
     return InputDecoration(
       filled: true,
-      fillColor: Colors.white,
+      fillColor: cardColor,
       hintText: hint,
-      hintStyle: const TextStyle(color: Colors.black38, fontSize: 13.5),
+      hintStyle: TextStyle(color: textColor, fontSize: 13.5),
       suffixIcon: suffix != null
-          ? Icon(suffix, color: Colors.black38, size: 20)
+          ? Icon(suffix, color: textColor, size: 20)
           : null,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+        borderSide: BorderSide(color: borderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+        borderSide: BorderSide(color: borderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(width: 1.4, color: Color(0xFF6366F1)),
+        borderSide: const BorderSide(width: 1.4, color: Color(0xFF34D399)), // Mint green focus
       ),
     );
   }
 
-  Widget custominputformfield(String? example, IconData? icn, TextEditingController controller) {
+  Widget custominputformfield(String? example, IconData? icn, TextEditingController controller, bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
           controller: controller,
-          decoration: _fieldDecoration(hint: example, suffix: icn),
+          style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          decoration: _fieldDecoration(isDark, hint: example, suffix: icn),
         ),
       ],
     );
   }
 
-  // ── Status toggle row (All / Expired / 40 Days) ──
-  Widget toggleswitch(String label, StatusFilter value, Color accent, int count) {
+  Widget toggleswitch(String label, StatusFilter value, Color accent, int count, bool isDark) {
     final isSelected = _statusFilter == value;
+    final textColor = isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87);
+    
     return InkWell(
       onTap: () => setState(() => _statusFilter = value),
       borderRadius: BorderRadius.circular(12),
@@ -380,20 +366,19 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
           color: isSelected ? accent : Colors.transparent,
         ),
         child: Text(
-          '$label($count)',
+          '$label ($count)',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 11.5,
             letterSpacing: 0.4,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-            color: isSelected ? Colors.white : Colors.black,
+            color: textColor,
           ),
         ),
       ),
     );
   }
 
-  // ── Widget-function helpers used by clientcard ─────────────────────────────
   Widget _statusDot(Color color, bool urgent) {
     return AnimatedBuilder(
       animation: _pulseController,
@@ -441,23 +426,28 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     required VoidCallback onTap,
     required Color status,
     required bool urgent,
+    required bool isDark,
   }) {
-    final dark = MediaQuery.of(context).platformBrightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final defaultBorderColor = isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB);
+
     return AnimatedBuilder(
       animation: _pulseController,
       child: child,
       builder: (context, cardChild) {
         final t = urgent ? _pulseController.value : 0.0;
-        final borderAlpha = urgent ? (30 + t * 190).round() : 20;
+        final borderAlpha = urgent ? (30 + t * 190).round() : 255;
+        final currentBorderColor = urgent ? status.withAlpha(borderAlpha) : defaultBorderColor;
+
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cardColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: status.withAlpha(borderAlpha), width: 2),
+            border: Border.all(color: currentBorderColor, width: urgent ? 2 : 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: dark ? 0.35 : 0.09),
+                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -489,8 +479,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     );
   }
 
-  // ── Client card ──
-  Widget clientcard(_ClientRecord client) {
+  Widget clientcard(_ClientRecord client, bool isDark) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final status = _classify(client.expiresAt, today);
@@ -499,8 +488,12 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     final statusText = _statusText(status, client.expiresAt, today);
     final initial = client.name.isNotEmpty ? client.name[0].toUpperCase() : '?';
     final isUrgent = status == ExpiryStatus.expired || status == ExpiryStatus.expiringSoon;
+    
+    final textColor = isDark ? Colors.white : Colors.black;
+    final subTextColor = isDark ? Colors.white70 : Colors.black87;
 
     return _clientCardShell(
+      isDark: isDark,
       status: statusColor,
       urgent: isUrgent,
       onTap: () async {
@@ -531,10 +524,10 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                 Text(
                   client.vehicleName.isEmpty ? '—' : client.vehicleName,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    color: textColor,
                   ),
                 ),
                 Text(
@@ -543,7 +536,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                   style: GoogleFonts.poppins(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black,
+                    color: subTextColor,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -582,16 +575,16 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                   );
                 },
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               SizedBox(
                 height: 20,
                 child: Text(
                   client.name,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black,
+                    color: subTextColor,
                   ),
                 ),
               ),
@@ -602,10 +595,12 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     );
   }
 
-  // ── Start-month filter picker ───────────────────────────
-  Future<void> _pickStartMonth() async {
+  Future<void> _pickStartMonth(bool isDark) async {
     int selectedYear = _startMonthFilter?.year ?? DateTime.now().year;
     int selectedMonth = _startMonthFilter?.month ?? DateTime.now().month;
+    
+    final dialogBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black;
 
     await showDialog(
       context: context,
@@ -613,6 +608,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             return Dialog(
+              backgroundColor: dialogBg,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -620,16 +616,18 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Filter by start month', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600)),
+                    Text('Filter by start month', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: textColor)),
                     const SizedBox(height: 4),
-                    Text('Shows policies whose start date falls in this month', style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF6B7280))),
+                    Text('Shows policies whose start date falls in this month', style: GoogleFonts.poppins(fontSize: 11.5, color: isDark ? Colors.white54 : const Color(0xFF6B7280))),
                     const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<int>(
                             initialValue: selectedMonth,
-                            decoration: _fieldDecoration(hint: 'Month'),
+                            dropdownColor: dialogBg,
+                            style: TextStyle(color: textColor),
+                            decoration: _fieldDecoration(isDark, hint: 'Month'),
                             items: List.generate(12, (i) => i + 1).map((m) => DropdownMenuItem(value: m, child: Text(_monthNames[m - 1]))).toList(),
                             onChanged: (v) => setDialogState(() => selectedMonth = v ?? selectedMonth),
                           ),
@@ -638,7 +636,9 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                         Expanded(
                           child: DropdownButtonFormField<int>(
                             initialValue: selectedYear,
-                            decoration: _fieldDecoration(hint: 'Year'),
+                            dropdownColor: dialogBg,
+                            style: TextStyle(color: textColor),
+                            decoration: _fieldDecoration(isDark, hint: 'Year'),
                             items: List.generate(6, (i) => DateTime.now().year - 4 + i).map((y) => DropdownMenuItem(value: y, child: Text('$y'))).toList(),
                             onChanged: (v) => setDialogState(() => selectedYear = v ?? selectedYear),
                           ),
@@ -657,9 +657,9 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                               },
                               style: TextButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(width: 0.5, color: Color(0xFFE5E7EB))),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(width: 0.5, color: isDark ? Colors.white24 : const Color(0xFFE5E7EB))),
                               ),
-                              child: Text('Clear', style: GoogleFonts.poppins(fontSize: 12)),
+                              child: Text('Clear', style: GoogleFonts.poppins(fontSize: 12, color: textColor)),
                             ),
                           ),
                         if (_startMonthFilter != null) const SizedBox(width: 10),
@@ -670,11 +670,11 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                               Navigator.pop(ctx);
                             },
                             style: TextButton.styleFrom(
-                              backgroundColor: const Color(0xFF6366F1),
+                              backgroundColor: const Color(0xFF34D399),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
-                            child: Text('Apply', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                            child: Text('Apply', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87)),
                           ),
                         ),
                       ],
@@ -691,58 +691,64 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF0F1714) : const Color(0xFFF6FBF8);
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF111827);
+    final subTextColor = isDark ? Colors.white54 : const Color(0xFF6B7280);
+
     final indexes = _visibleClients;
     final monthLabel = _startMonthFilter == null
         ? 'This Month'
         : '${_monthNames[_startMonthFilter!.month - 1]} ${_startMonthFilter!.year}';
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 251, 251, 251),
+        backgroundColor: cardColor,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Welcome!',
+              'Customers',
               style: GoogleFonts.poppins(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF111827),
+                color: textColor,
               ),
             ),
             Text(
               '$total_data_entry clients registered',
               style: GoogleFonts.poppins(
                 fontSize: 12,
-                color: const Color(0xFF6B7280),
+                color: subTextColor,
               ),
             ),
           ],
         ),
         actions: [
           TextButton.icon(
-            onPressed: _pickStartMonth,
+            onPressed: () => _pickStartMonth(isDark),
             label: Text(
               monthLabel,
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Colors.black,
+                color: textColor,
               ),
             ),
-            icon: const Icon(
+            icon: Icon(
               Icons.calendar_month,
               size: 18,
-              color: Colors.black,
+              color: textColor,
             ),
           ),
           if (_startMonthFilter != null)
             IconButton(
               tooltip: 'Clear month filter',
-              icon: const Icon(Icons.close, size: 18, color: Color(0xFF6B7280)),
+              icon: Icon(Icons.close, size: 18, color: subTextColor),
               onPressed: () => setState(() => _startMonthFilter = null),
             ),
           const SizedBox(width: 4),
@@ -751,16 +757,18 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: getData,
+          color: const Color(0xFF34D399),
+          backgroundColor: cardColor,
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFF34D399)))
               : ListView(
                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                   children: [
                     // ── Status filter row ──
                     Container(
-                      padding: EdgeInsets.symmetric(vertical: 5, horizontal: 2),
+                      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 2),
                       decoration: BoxDecoration(
-                        color: const Color.fromARGB(255, 0, 0, 0).withAlpha(10),
+                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Builder(
@@ -772,8 +780,9 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                                 child: toggleswitch(
                                   'All',
                                   StatusFilter.all,
-                                  Colors.black,
+                                  isDark ? const Color(0xFF3A3A3A) : Colors.black,
                                   counts[StatusFilter.all]!,
+                                  isDark
                                 ),
                               ),
                               Expanded(
@@ -782,6 +791,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                                   StatusFilter.expired,
                                   const Color.fromARGB(255, 245, 3, 3),
                                   counts[StatusFilter.expired]!,
+                                  isDark
                                 ),
                               ),
                               Expanded(
@@ -790,6 +800,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                                   StatusFilter.expiringSoon,
                                   const Color.fromARGB(255, 255, 124, 2),
                                   counts[StatusFilter.expiringSoon]!,
+                                  isDark
                                 ),
                               ),
                             ],
@@ -802,6 +813,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                       'Search by client name, registration, vehicle...',
                       Icons.search,
                       search,
+                      isDark
                     ),
 
                     // ── Section label ──
@@ -816,14 +828,14 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 1.2,
-                              color: Colors.black,
+                              color: textColor,
                             ),
                           ),
                           Text(
                             '${indexes.length} shown',
                             style: GoogleFonts.poppins(
                               fontSize: 11,
-                              color: Colors.black,
+                              color: subTextColor,
                             ),
                           ),
                         ],
@@ -835,17 +847,17 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                         padding: const EdgeInsets.symmetric(vertical: 40),
                         child: Column(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.inbox_outlined,
                               size: 36,
-                              color: Color(0xFF9CA3AF),
+                              color: subTextColor,
                             ),
                             const SizedBox(height: 10),
                             Text(
                               'No clients match this filter',
                               style: GoogleFonts.poppins(
                                 fontSize: 13,
-                                color: const Color(0xFF6B7280),
+                                color: subTextColor,
                               ),
                             ),
                           ],
@@ -856,7 +868,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: indexes.length,
-                      itemBuilder: (context, index) => clientcard(indexes[index]),
+                      itemBuilder: (context, index) => clientcard(indexes[index], isDark),
                     ),
                   ],
                 ),
