@@ -19,8 +19,6 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
   bool _loading = true;
 
   // Exact Colors from the Dribbble Inspiration
-  final Color bgDark = const Color(0xFF0D0E12); 
-  final Color cardDark = const Color(0xFF1A1C23); 
   final Color limeGreen = const Color(0xFFB2F068); 
   final Color accentOrange = const Color(0xFFFF6B4A); 
   final Color badgePink = const Color(0xFFFF2E7E); 
@@ -98,20 +96,25 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
     }
   }
 
-  void _showSettingsDialog() {
+  void _showSettingsDialog(bool isDark) {
     final email = SupabaseService.currentUserEmail ?? 'Not logged in';
     final name = SupabaseService.currentUserName;
+    
+    final dialogBg = isDark ? const Color(0xFF1A1C23) : Colors.white;
+    final textMain = isDark ? Colors.white : Colors.black87;
+    final textSub = isDark ? Colors.white54 : Colors.black54;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: cardDark,
+        backgroundColor: dialogBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Row(
           children: [
-            const Icon(Icons.settings_outlined, color: Colors.white),
+            Icon(Icons.settings_outlined, color: textMain),
             const SizedBox(width: 10),
             Expanded(
-              child: Text('Account', style: GoogleFonts.outfit(fontSize: 18, color: Colors.white)),
+              child: Text('Account', style: GoogleFonts.outfit(fontSize: 18, color: textMain)),
             ),
           ],
         ),
@@ -119,9 +122,9 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('User: $name', style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: Colors.white)),
+            Text('User: $name', style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: textMain)),
             const SizedBox(height: 4),
-            Text('Email: $email', style: GoogleFonts.outfit(fontSize: 13, color: Colors.white54)),
+            Text('Email: $email', style: GoogleFonts.outfit(fontSize: 13, color: textSub)),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -149,6 +152,14 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
+
+    final Color bgCol = isDark ? const Color(0xFF0D0E12) : const Color(0xFFF3F4F8);
+    final Color cardCol = isDark ? const Color(0xFF1A1C23) : Colors.white;
+    final Color textMain = isDark ? Colors.white : Colors.black87;
+    final Color textSub = isDark ? Colors.white70 : Colors.black54;
+    final Color iconBorder = isDark ? Colors.white24 : Colors.black12;
+
     int displayCount = 0;
     String badgeText = "Valid ✅";
     String suffixText = " right now.";
@@ -164,14 +175,14 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
     }
 
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: bgCol,
       body: Stack(
         children: [
           SafeArea(
             bottom: false,
             child: RefreshIndicator(
-              color: Colors.white,
-              backgroundColor: cardDark,
+              color: isDark ? Colors.white : Colors.black,
+              backgroundColor: cardCol,
               onRefresh: _loadDashboardData,
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 120), 
@@ -184,11 +195,11 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                         children: [
                           Text(
                             'Hello 👋',
-                            style: GoogleFonts.outfit(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                            style: GoogleFonts.outfit(fontSize: 18, color: textMain, fontWeight: FontWeight.bold),
                           ),
                           Text(
                             '${SupabaseService.currentUserName}!',
-                            style: GoogleFonts.outfit(fontSize: 14, color: Colors.white70),
+                            style: GoogleFonts.outfit(fontSize: 14, color: textSub),
                           ),
                         ],
                       ),
@@ -196,14 +207,14 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                         children: [
                           Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white24)),
-                            child: const Icon(Icons.search_rounded, color: Colors.white, size: 18),
+                            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: iconBorder)),
+                            child: Icon(Icons.search_rounded, color: textMain, size: 18),
                           ),
                           const SizedBox(width: 10),
                           Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white24)),
-                            child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 18),
+                            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: iconBorder)),
+                            child: Icon(Icons.notifications_none_rounded, color: textMain, size: 18),
                           ),
                         ],
                       )
@@ -270,12 +281,17 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // LIME GREEN CARD
                       Expanded(
                         flex: 11,
                         child: Container(
                           height: 220,
                           padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(color: limeGreen, borderRadius: BorderRadius.circular(26)),
+                          decoration: BoxDecoration(
+                            color: limeGreen, 
+                            borderRadius: BorderRadius.circular(26),
+                            boxShadow: isDark ? [] : [BoxShadow(color: limeGreen.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -288,7 +304,7 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                                     Container(
                                       padding: const EdgeInsets.all(3),
                                       decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
-                                      child: Icon(Icons.check, color: limeGreen, size: 10), // CONST REMOVED HERE
+                                      child: Icon(Icons.check, color: limeGreen, size: 10), 
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
@@ -317,11 +333,16 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                           height: 220,
                           child: Column(
                             children: [
+                              // RENEWED CHART CARD
                               Expanded(
                                 child: Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.all(14),
-                                  decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(24)),
+                                  decoration: BoxDecoration(
+                                    color: cardCol, 
+                                    borderRadius: BorderRadius.circular(24),
+                                    boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+                                  ),
                                   child: Row(
                                     children: [
                                       SizedBox(
@@ -330,14 +351,14 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                                         child: Stack(
                                           alignment: Alignment.center,
                                           children: [
-                                            CircularProgressIndicator( // CONST REMOVED HERE
+                                            CircularProgressIndicator( 
                                               value: 0.3, 
                                               color: badgePink,
-                                              backgroundColor: Colors.white10,
+                                              backgroundColor: isDark ? Colors.white10 : Colors.black12,
                                               strokeWidth: 5,
                                               strokeCap: StrokeCap.round,
                                             ),
-                                            Text('30%', style: GoogleFonts.outfit(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                            Text('30%', style: GoogleFonts.outfit(color: textMain, fontSize: 11, fontWeight: FontWeight.bold)),
                                           ],
                                         ),
                                       ),
@@ -349,9 +370,9 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                                           children: [
                                             FittedBox(
                                               fit: BoxFit.scaleDown,
-                                              child: Text('Renewed', style: GoogleFonts.outfit(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                                              child: Text('Renewed', style: GoogleFonts.outfit(color: textMain, fontSize: 13, fontWeight: FontWeight.bold)),
                                             ),
-                                            Text('${_metrics.renewedThisMonth}/${_metrics.totalPolicies} total', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 10)),
+                                            Text('${_metrics.renewedThisMonth}/${_metrics.totalPolicies} total', style: GoogleFonts.outfit(color: textSub, fontSize: 10)),
                                           ],
                                         ),
                                       )
@@ -361,11 +382,16 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                               ),
                               const SizedBox(height: 16),
                               
+                              // BAR CHART CARD
                               Expanded(
                                 child: Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                  decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(24)),
+                                  decoration: BoxDecoration(
+                                    color: cardCol, 
+                                    borderRadius: BorderRadius.circular(24),
+                                    boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+                                  ),
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,9 +407,9 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                                       const SizedBox(height: 10),
                                       Row(
                                         children: [
-                                          const Icon(Icons.track_changes_rounded, color: Colors.white54, size: 12),
+                                          Icon(Icons.track_changes_rounded, color: textSub, size: 12),
                                           const SizedBox(width: 6),
-                                          Text('Active: ${_metrics.activePolicies}', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 11)),
+                                          Text('Active: ${_metrics.activePolicies}', style: GoogleFonts.outfit(color: textSub, fontSize: 11)),
                                         ],
                                       )
                                     ],
@@ -401,18 +427,19 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Recent Policies', style: GoogleFonts.outfit(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-                      const Icon(Icons.arrow_outward_rounded, color: Colors.white54, size: 18),
+                      Text('Recent Policies', style: GoogleFonts.outfit(fontSize: 18, color: textMain, fontWeight: FontWeight.bold)),
+                      Icon(Icons.arrow_outward_rounded, color: textSub, size: 18),
                     ],
                   ),
                   const SizedBox(height: 14),
                   
-                  ...recentPolicies.map((item) => _buildRecentItem(item)),
+                  ...recentPolicies.map((item) => _buildRecentItem(item, isDark, cardCol)),
                 ],
               ),
             ),
           ),
 
+          // ─── IOS STYLE FLOATING DOCK ───
           Positioned(
             bottom: 24, 
             left: 24,
@@ -421,26 +448,27 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
               height: 70,
               padding: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
-                color: cardDark.withOpacity(0.95), 
+                color: isDark ? const Color(0xFF1A1C23).withOpacity(0.95) : Colors.white.withOpacity(0.95), 
                 borderRadius: BorderRadius.circular(35), 
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20, offset: const Offset(0, 10))
+                  BoxShadow(color: Colors.black.withOpacity(isDark ? 0.5 : 0.1), blurRadius: 20, offset: const Offset(0, 10))
                 ]
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.home_filled, color: Colors.white, size: 26),
+                    icon: Icon(Icons.home_filled, color: isDark ? Colors.white : Colors.black, size: 26),
                     onPressed: () {}, 
                   ),
                   IconButton(
-                    icon: const Icon(Icons.people_alt_rounded, color: Colors.white54, size: 24),
+                    icon: Icon(Icons.people_alt_rounded, color: isDark ? Colors.white54 : Colors.black45, size: 24),
                     onPressed: () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const Sales())).then((_) => _loadDashboardData());
                     },
                   ),
                   
+                  // PREMIUM FLOATING ACTION BUTTON
                   GestureDetector(
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const addcustomer(mode: 0))).then((_) => _loadDashboardData());
@@ -449,23 +477,23 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                       height: 52,
                       width: 52,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? Colors.white : Colors.black,
                         shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: Colors.white.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))]
+                        boxShadow: [BoxShadow(color: (isDark ? Colors.white : Colors.black).withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))]
                       ),
-                      child: const Icon(Icons.add_rounded, color: Colors.black, size: 28),
+                      child: Icon(Icons.add_rounded, color: isDark ? Colors.black : Colors.white, size: 28),
                     ),
                   ),
 
                   IconButton(
-                    icon: const Icon(Icons.bar_chart_rounded, color: Colors.white54, size: 24),
+                    icon: Icon(Icons.bar_chart_rounded, color: isDark ? Colors.white54 : Colors.black45, size: 24),
                     onPressed: () {
                       Navigator.push(context, MaterialPageRoute(builder: (context) => const FileClaimScreen())).then((_) => _loadDashboardData());
                     },
                   ),
                   IconButton(
-                    icon: const Icon(Icons.person_rounded, color: Colors.white54, size: 24),
-                    onPressed: _showSettingsDialog,
+                    icon: Icon(Icons.person_rounded, color: isDark ? Colors.white54 : Colors.black45, size: 24),
+                    onPressed: () => _showSettingsDialog(isDark),
                   ),
                 ],
               ),
@@ -501,11 +529,15 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
     );
   }
 
-  Widget _buildRecentItem(Map<String, String> item) {
+  Widget _buildRecentItem(Map<String, String> item, bool isDark, Color cardCol) {
     bool isUrgent = item['status'] == 'urgent' || item['status'] == 'lapsed';
-    Color badgeColor = isUrgent ? badgePink : limeGreen;
-    String badgeText = isUrgent ? 'High' : 'Low';
-    if(item['status'] == 'upcoming') { badgeColor = chartCyan; badgeText = 'Med'; }
+    bool isUpcoming = item['status'] == 'upcoming';
+
+    Color badgeColor = isUrgent ? badgePink : (isUpcoming ? accentOrange : limeGreen);
+    String badgeText = isUrgent ? 'High' : (isUpcoming ? 'Med' : 'Low');
+
+    Color textMain = isDark ? Colors.white : Colors.black87;
+    Color textSub = isDark ? Colors.white70 : Colors.black54;
 
     return InkWell(
       onTap: () {
@@ -518,7 +550,12 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(22)),
+        decoration: BoxDecoration(
+          color: cardCol, 
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB)),
+          boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -534,26 +571,26 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                   children: [
                     Icon(Icons.circle, color: badgeBlue, size: 6),
                     const SizedBox(width: 4),
-                    Text(item['type'] ?? '', style: GoogleFonts.outfit(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    Text(item['type'] ?? '', style: GoogleFonts.outfit(color: textMain, fontSize: 11, fontWeight: FontWeight.bold)),
                   ],
                 )
               ],
             ),
             const SizedBox(height: 12),
-            Text(item['customer'] ?? '', style: GoogleFonts.outfit(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+            Text(item['customer'] ?? '', style: GoogleFonts.outfit(color: textMain, fontSize: 15, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.access_time_rounded, color: Colors.white54, size: 12),
+                Icon(Icons.access_time_rounded, color: textSub, size: 12),
                 const SizedBox(width: 6),
-                Text(item['vehicle'] ?? '', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 12)),
+                Text(item['vehicle'] ?? '', style: GoogleFonts.outfit(color: textSub, fontSize: 12)),
               ],
             ),
             const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(item['note'] ?? '', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 11)),
+                Text(item['note'] ?? '', style: GoogleFonts.outfit(color: textSub, fontSize: 11)),
                 SizedBox(
                   width: 46,
                   height: 22,
