@@ -2,13 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:insurance/services/supabase_service.dart';
 
-/// ---------------------------------------------------------------------
-/// FILE CLAIM SCREEN
-/// ---------------------------------------------------------------------
-/// Captures everything needed to register an insurance claim: the
-/// policy it relates to, incident specifics, estimated loss, supporting
-/// documents, and the contact point for claim follow-up.
-/// ---------------------------------------------------------------------
 class FileClaimScreen extends StatefulWidget {
   const FileClaimScreen({super.key});
 
@@ -18,6 +11,14 @@ class FileClaimScreen extends StatefulWidget {
 
 class _FileClaimScreenState extends State<FileClaimScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  // ── Theme Colors (Dribbble Palette) ──────────────────────────────────────
+  final Color bgDark = const Color(0xFF0D0E12); 
+  final Color cardDark = const Color(0xFF1A1C23); 
+  final Color limeGreen = const Color(0xFFB2F068); 
+  final Color accentOrange = const Color(0xFFFF6B4A); 
+  final Color badgePink = const Color(0xFFFF2E7E); 
+  final Color chartCyan = const Color(0xFF00D1D1); 
 
   final _policyNumberCtrl = TextEditingController();
   String? _claimType;
@@ -32,7 +33,8 @@ class _FileClaimScreenState extends State<FileClaimScreen> {
   bool _thirdPartyInvolved = false;
   bool _injuriesReported = false;
 
-  // Document checklist (represents attachments the user has prepared)
+  bool _saving = false;
+
   final Map<String, bool> _documents = {
     'Photos of Damage': false,
     'RC Book Copy': false,
@@ -64,6 +66,8 @@ class _FileClaimScreenState extends State<FileClaimScreen> {
     super.dispose();
   }
 
+  bool get isDark => MediaQuery.of(context).platformBrightness == Brightness.dark;
+
   Future<void> _pickIncidentDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -71,6 +75,14 @@ class _FileClaimScreenState extends State<FileClaimScreen> {
       initialDate: now,
       firstDate: DateTime(now.year - 2),
       lastDate: now,
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: isDark 
+            ? ColorScheme.dark(primary: chartCyan, surface: cardDark)
+            : ColorScheme.light(primary: chartCyan),
+        ),
+        child: child!,
+      ),
     );
     if (picked != null) setState(() => _incidentDate = picked);
   }
@@ -79,6 +91,14 @@ class _FileClaimScreenState extends State<FileClaimScreen> {
     final picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: isDark 
+            ? ColorScheme.dark(primary: chartCyan, surface: cardDark)
+            : ColorScheme.light(primary: chartCyan),
+        ),
+        child: child!,
+      ),
     );
     if (picked != null) setState(() => _incidentTime = picked);
   }
@@ -93,6 +113,8 @@ class _FileClaimScreenState extends State<FileClaimScreen> {
         _showSnack('Please select the date of incident');
         return;
       }
+
+      setState(() => _saving = true);
 
       final claimPayload = {
         'policy_number': _policyNumberCtrl.text.trim(),
@@ -116,304 +138,105 @@ class _FileClaimScreenState extends State<FileClaimScreen> {
       try {
         await SupabaseService.createClaim(claimPayload);
         if (!mounted) return;
-        _showSnack('Claim registered successfully in Supabase');
-        Navigator.of(context).maybePop(claimPayload);
+        _showSuccess('Claim registered successfully.');
       } catch (e) {
         if (!mounted) return;
         _showSnack('Failed to register claim: $e');
+      } finally {
+        if (mounted) setState(() => _saving = false);
       }
     }
   }
 
   void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0F1714) : const Color(0xFFF6FBF8);
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF1A1A1A);
-    final accent = isDark ? const Color(0xFF34D399) : const Color(0xFF059669);
-    final warnColor = const Color(0xFFF59E0B);
-    final borderColor = isDark
-        ? const Color(0xFF3A3A3A)
-        : const Color(0xFFE5E7EB);
-
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: cardColor,
-        title: Text(
-          'File a Claim',
-          style: GoogleFonts.dmSans(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: textColor,
-          ),
-        ),
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 14),
-              decoration: BoxDecoration(
-                color: warnColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: warnColor.withValues(alpha: 0.4)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, color: warnColor, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'For accidents involving injury or third-party damage, '
-                      'inform the police and keep the FIR copy handy.',
-                      style: TextStyle(fontSize: 11.5, color: textColor),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            _sectionHeader('Policy & Claim Type', accent, textColor),
-            _card(cardColor, borderColor, [
-              _textField(
-                _policyNumberCtrl,
-                'Policy Number',
-                Icons.policy_outlined,
-                textColor,
-                borderColor,
-                required: true,
-              ),
-              _dropdownField(
-                label: 'Claim Type',
-                value: _claimType,
-                items: _claimTypes,
-                onChanged: (v) => setState(() => _claimType = v),
-                textColor: textColor,
-                borderColor: borderColor,
-              ),
-            ]),
-            _sectionHeader('Incident Details', accent, textColor),
-            _card(cardColor, borderColor, [
-              Row(
-                children: [
-                  Expanded(
-                    child: _dateField(
-                      label: 'Date of Incident',
-                      value: _incidentDate,
-                      onTap: _pickIncidentDate,
-                      textColor: textColor,
-                      borderColor: borderColor,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: InkWell(
-                      onTap: _pickIncidentTime,
-                      borderRadius: BorderRadius.circular(12),
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          labelText: 'Time',
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: borderColor),
-                          ),
-                          suffixIcon: const Icon(Icons.access_time, size: 18),
-                        ),
-                        child: Text(
-                          _incidentTime == null
-                              ? 'Select'
-                              : _incidentTime!.format(context),
-                          style: TextStyle(color: textColor, fontSize: 13),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _textField(
-                _locationCtrl,
-                'Location of Incident',
-                Icons.location_on_outlined,
-                textColor,
-                borderColor,
-                required: true,
-              ),
-              _textField(
-                _descriptionCtrl,
-                'Describe What Happened',
-                Icons.description_outlined,
-                textColor,
-                borderColor,
-                maxLines: 4,
-                required: true,
-              ),
-              SwitchListTile(
-                value: _thirdPartyInvolved,
-                onChanged: (v) => setState(() => _thirdPartyInvolved = v),
-                title: Text(
-                  'Third-party vehicle/property involved?',
-                  style: TextStyle(fontSize: 13, color: textColor),
-                ),
-                activeThumbColor: accent,
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-              ),
-              SwitchListTile(
-                value: _injuriesReported,
-                onChanged: (v) => setState(() => _injuriesReported = v),
-                title: Text(
-                  'Any injuries reported?',
-                  style: TextStyle(fontSize: 13, color: textColor),
-                ),
-                activeThumbColor: accent,
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-              ),
-              _textField(
-                _firNumberCtrl,
-                'Police FIR Number (if applicable)',
-                Icons.local_police_outlined,
-                textColor,
-                borderColor,
-                required: false,
-              ),
-            ]),
-            _sectionHeader('Loss Estimate', accent, textColor),
-            _card(cardColor, borderColor, [
-              _textField(
-                _estimatedLossCtrl,
-                'Estimated Loss / Damage Amount ₹',
-                Icons.currency_rupee_outlined,
-                textColor,
-                borderColor,
-                keyboardType: TextInputType.number,
-                required: true,
-              ),
-              _textField(
-                _preferredGarageCtrl,
-                'Preferred Garage / Hospital (optional)',
-                Icons.local_hospital_outlined,
-                textColor,
-                borderColor,
-                required: false,
-              ),
-            ]),
-            _sectionHeader('Supporting Documents', accent, textColor),
-            _card(cardColor, borderColor, [
-              for (final key in _documents.keys)
-                CheckboxListTile(
-                  value: _documents[key],
-                  onChanged: (v) =>
-                      setState(() => _documents[key] = v ?? false),
-                  title: Text(
-                    key,
-                    style: TextStyle(fontSize: 13, color: textColor),
-                  ),
-                  secondary: Icon(Icons.attach_file, size: 18, color: accent),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                  activeColor: accent,
-                  dense: true,
-                ),
-              const SizedBox(height: 4),
-              OutlinedButton.icon(
-                onPressed: () {
-                  // TODO: hook into file/image picker
-                  _showSnack('Attach files via device picker');
-                },
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: accent),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: Icon(Icons.upload_file, color: accent, size: 18),
-                label: Text(
-                  'Upload Documents',
-                  style: TextStyle(color: accent, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ]),
-            _sectionHeader('Contact for Follow-up', accent, textColor),
-            _card(cardColor, borderColor, [
-              _textField(
-                _contactPhoneCtrl,
-                'Contact Phone Number',
-                Icons.phone_outlined,
-                textColor,
-                borderColor,
-                keyboardType: TextInputType.phone,
-                required: true,
-              ),
-            ]),
-            const SizedBox(height: 20),
-            SizedBox(
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: accent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                icon: const Icon(
-                  Icons.assignment_turned_in_outlined,
-                  color: Colors.white,
-                ),
-                label: const Text(
-                  'Submit Claim',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: GoogleFonts.outfit()),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
-  // ---- Reusable building blocks ----------------------------------------
+  Future<void> _showSuccess(String message) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: isDark ? cardDark : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: limeGreen),
+            const SizedBox(width: 10),
+            Text(
+              'Claim Filed!',
+              style: GoogleFonts.outfit(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: GoogleFonts.outfit(color: isDark ? Colors.white70 : Colors.black87),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              if (mounted) Navigator.of(context).pop();
+            },
+            child: Text('Done', style: GoogleFonts.outfit(color: chartCyan, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget _sectionHeader(String label, Color accent, Color textColor) {
+  // ─── STYLING HELPERS ───
+  InputDecoration _decoration(String hint, IconData? icon) {
+    final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF3A3A3A) : Colors.black.withOpacity(0.08);
+    final hintColor = isDark ? Colors.white38 : Colors.black38;
+    final iconColor = isDark ? Colors.white54 : Colors.black38;
+
+    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: c, width: w),
+    );
+
+    return InputDecoration(
+      filled: true,
+      fillColor: bgColor,
+      hintText: hint,
+      hintStyle: GoogleFonts.outfit(color: hintColor, fontSize: 13.5),
+      prefixIcon: icon != null ? Icon(icon, size: 20, color: iconColor) : null,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: border(borderColor),
+      enabledBorder: border(borderColor, 1),
+      focusedBorder: border(chartCyan, 1.5),
+      errorBorder: border(badgePink, 1.2),
+      focusedErrorBorder: border(badgePink, 1.5),
+    );
+  }
+
+  Widget _sectionHeader(String label) {
     return Padding(
-      padding: const EdgeInsets.only(top: 18, bottom: 8, left: 2),
+      padding: const EdgeInsets.only(top: 24, bottom: 12, left: 4),
       child: Row(
         children: [
           Container(
             width: 4,
             height: 18,
-            decoration: BoxDecoration(
-              color: accent,
-              borderRadius: BorderRadius.circular(2),
-            ),
+            decoration: BoxDecoration(color: accentOrange, borderRadius: BorderRadius.circular(2)),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Text(
             label.toUpperCase(),
-            style: TextStyle(
-              fontSize: 12,
+            style: GoogleFonts.outfit(
+              fontSize: 13,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.1,
-              color: textColor,
+              color: isDark ? Colors.white : Colors.black87,
             ),
           ),
         ],
@@ -421,19 +244,24 @@ class _FileClaimScreenState extends State<FileClaimScreen> {
     );
   }
 
-  Widget _card(Color cardColor, Color borderColor, List<Widget> children) {
+  Widget _card(List<Widget> children) {
+    final cColor = isDark ? cardDark : Colors.white;
+    final bColor = isDark ? const Color(0xFF3A3A3A) : Colors.black.withOpacity(0.05);
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
+        color: cColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: bColor),
+        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (int i = 0; i < children.length; i++) ...[
             children[i],
-            if (i != children.length - 1) const SizedBox(height: 12),
+            if (i != children.length - 1) const SizedBox(height: 16),
           ],
         ],
       ),
@@ -442,10 +270,8 @@ class _FileClaimScreenState extends State<FileClaimScreen> {
 
   Widget _textField(
     TextEditingController ctrl,
-    String label,
-    IconData icon,
-    Color textColor,
-    Color borderColor, {
+    String hint,
+    IconData icon, {
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
     bool required = true,
@@ -454,88 +280,201 @@ class _FileClaimScreenState extends State<FileClaimScreen> {
       controller: ctrl,
       keyboardType: keyboardType,
       maxLines: maxLines,
-      style: TextStyle(color: textColor, fontSize: 13),
-      validator: required
-          ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null
-          : null,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 19),
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: borderColor),
-        ),
-      ),
+      style: GoogleFonts.outfit(color: isDark ? Colors.white : Colors.black87, fontSize: 14.5),
+      validator: required ? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null : null,
+      decoration: _decoration(hint, icon),
     );
   }
 
-  Widget _dropdownField({
-    required String label,
-    required String? value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-    required Color textColor,
-    required Color borderColor,
-  }) {
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      isExpanded: true,
-      style: TextStyle(color: textColor, fontSize: 13),
-      decoration: InputDecoration(
-        labelText: label,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: borderColor),
-        ),
-      ),
-      items: items
-          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-          .toList(),
-      onChanged: onChanged,
-      validator: (v) => v == null ? 'Required' : null,
-    );
-  }
+  @override
+  Widget build(BuildContext context) {
+    final bgCol = isDark ? bgDark : const Color(0xFFF3F4F8);
+    final cColor = isDark ? cardDark : Colors.white;
+    final textMain = isDark ? Colors.white : Colors.black87;
 
-  Widget _dateField({
-    required String label,
-    required DateTime? value,
-    required VoidCallback onTap,
-    required Color textColor,
-    required Color borderColor,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 12,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: borderColor),
-          ),
-          suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
+    return Scaffold(
+      backgroundColor: bgCol,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: cColor,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: textMain),
         ),
-        child: Text(
-          value == null
-              ? 'Select date'
-              : '${value.day.toString().padLeft(2, '0')}/'
-                    '${value.month.toString().padLeft(2, '0')}/${value.year}',
-          style: TextStyle(color: textColor, fontSize: 13),
+        title: Text(
+          'File a Claim',
+          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: textMain),
+        ),
+        centerTitle: true,
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+          children: [
+            // Warning Banner
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: accentOrange.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: accentOrange.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: accentOrange, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'For accidents involving injury or third-party damage, inform the police and keep the FIR copy handy.',
+                      style: GoogleFonts.outfit(fontSize: 13, color: isDark ? Colors.white : Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            _sectionHeader('Policy & Claim Type'),
+            _card([
+              _textField(_policyNumberCtrl, 'Policy Number', Icons.policy_outlined, required: true),
+              DropdownButtonFormField<String>(
+                value: _claimType,
+                dropdownColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                style: GoogleFonts.outfit(color: isDark ? Colors.white : Colors.black87, fontSize: 14.5),
+                decoration: _decoration('Select Claim Type', Icons.category_outlined),
+                items: _claimTypes.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                onChanged: (v) => setState(() => _claimType = v),
+                validator: (v) => v == null ? 'Required' : null,
+              ),
+            ]),
+
+            _sectionHeader('Incident Details'),
+            _card([
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: _pickIncidentDate,
+                      borderRadius: BorderRadius.circular(14),
+                      child: InputDecorator(
+                        decoration: _decoration('Date', Icons.calendar_today_outlined),
+                        child: Text(
+                          _incidentDate == null ? 'Select' : '${_incidentDate!.day}/${_incidentDate!.month}/${_incidentDate!.year}',
+                          style: GoogleFonts.outfit(color: _incidentDate == null ? (isDark ? Colors.white38 : Colors.black38) : textMain, fontSize: 14.5),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: _pickIncidentTime,
+                      borderRadius: BorderRadius.circular(14),
+                      child: InputDecorator(
+                        decoration: _decoration('Time', Icons.access_time_rounded),
+                        child: Text(
+                          _incidentTime == null ? 'Select' : _incidentTime!.format(context),
+                          style: GoogleFonts.outfit(color: _incidentTime == null ? (isDark ? Colors.white38 : Colors.black38) : textMain, fontSize: 14.5),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              _textField(_locationCtrl, 'Location of Incident', Icons.location_on_outlined, required: true),
+              _textField(_descriptionCtrl, 'Describe What Happened', Icons.description_outlined, maxLines: 4, required: true),
+              
+              SwitchListTile(
+                value: _thirdPartyInvolved,
+                onChanged: (v) => setState(() => _thirdPartyInvolved = v),
+                title: Text('Third-party involved?', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: textMain)),
+                activeColor: chartCyan,
+                contentPadding: EdgeInsets.zero,
+              ),
+              SwitchListTile(
+                value: _injuriesReported,
+                onChanged: (v) => setState(() => _injuriesReported = v),
+                title: Text('Any injuries reported?', style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: textMain)),
+                activeColor: badgePink,
+                contentPadding: EdgeInsets.zero,
+              ),
+              
+              _textField(_firNumberCtrl, 'Police FIR Number (if applicable)', Icons.local_police_outlined, required: false),
+            ]),
+
+            _sectionHeader('Loss Estimate'),
+            _card([
+              _textField(_estimatedLossCtrl, 'Estimated Loss Amount ₹', Icons.currency_rupee_outlined, keyboardType: TextInputType.number, required: true),
+              _textField(_preferredGarageCtrl, 'Preferred Garage / Hospital (optional)', Icons.local_hospital_outlined, required: false),
+            ]),
+
+            _sectionHeader('Supporting Documents'),
+            _card([
+              for (final key in _documents.keys)
+                CheckboxListTile(
+                  value: _documents[key],
+                  onChanged: (v) => setState(() => _documents[key] = v ?? false),
+                  title: Text(key, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w500, color: textMain)),
+                  activeColor: chartCyan,
+                  checkColor: Colors.black,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showSnack('File picker coming soon'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: BorderSide(color: chartCyan.withOpacity(0.5), width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: Icon(Icons.upload_file, color: chartCyan, size: 20),
+                  label: Text('Upload Documents', style: GoogleFonts.outfit(color: chartCyan, fontWeight: FontWeight.bold, fontSize: 14)),
+                ),
+              ),
+            ]),
+
+            _sectionHeader('Contact'),
+            _card([
+              _textField(_contactPhoneCtrl, 'Contact Phone Number', Icons.phone_outlined, keyboardType: TextInputType.phone, required: true),
+            ]),
+            
+            const SizedBox(height: 32),
+            
+            // Premium Submit Button
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: 56,
+              decoration: BoxDecoration(
+                color: accentOrange,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: accentOrange.withOpacity(0.4), blurRadius: 14, offset: const Offset(0, 6))],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: _saving ? null : _submit,
+                  child: Center(
+                    child: _saving 
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.assignment_turned_in_outlined, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Text('Submit Claim', style: GoogleFonts.outfit(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
