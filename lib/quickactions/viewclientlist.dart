@@ -39,7 +39,7 @@ class Sales extends StatefulWidget {
   State<Sales> createState() => _SalesState();
 }
 
-class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
+class _SalesState extends State<Sales> {
   TextEditingController search = TextEditingController();
 
   List<_ClientRecord> _clients = [];
@@ -49,23 +49,24 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
   StatusFilter _statusFilter = StatusFilter.all;
   DateTime? _startMonthFilter; 
 
-  late final AnimationController _pulseController;
+  // Dribbble Color Palette
+  final Color bgDark = const Color(0xFF0D0E12); 
+  final Color limeGreen = const Color(0xFFB2F068); 
+  final Color accentOrange = const Color(0xFFFF6B4A); 
+  final Color badgePink = const Color(0xFFFF2E7E); 
+  final Color badgeBlue = const Color(0xFF3B82F6); 
+  final Color chartCyan = const Color(0xFF00D1D1); 
 
   @override
   void initState() {
     super.initState();
     search.addListener(() => setState(() {}));
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
     getData();
   }
 
   @override
   void dispose() {
     search.dispose();
-    _pulseController.dispose();
     super.dispose();
   }
 
@@ -180,26 +181,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     return ExpiryStatus.valid;
   }
 
-  Color _statusColor(ExpiryStatus status) {
-    switch (status) {
-      case ExpiryStatus.expired:
-        return const Color.fromARGB(255, 242, 3, 3);
-      case ExpiryStatus.expiringSoon:
-        return const Color.fromARGB(255, 255, 124, 2);
-      case ExpiryStatus.valid:
-        return const Color.fromARGB(255, 16, 165, 5); 
-      case ExpiryStatus.unknown:
-        return const Color(0xFF9CA3AF);
-    }
-  }
-
-  Color? _borderColor(ExpiryStatus status) {
-    if (status == ExpiryStatus.expired || status == ExpiryStatus.expiringSoon) {
-      return _statusColor(status);
-    }
-    return null;
-  }
-
   String _fmtDate(DateTime d) {
     final yy = (d.year % 100).toString().padLeft(2, '0');
     return '${d.day}/${d.month}/$yy';
@@ -238,7 +219,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
         final haystack = '${c.name} ${c.registration} ${c.vehicleName}'.toLowerCase();
         if (!haystack.contains(query)) return false;
       }
-
       if (_startMonthFilter != null) {
         if (c.startAt == null) return false;
         if (c.startAt!.year != _startMonthFilter!.year ||
@@ -246,7 +226,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
           return false;
         }
       }
-
       final status = _classify(c.expiresAt, today);
       switch (_statusFilter) {
         case StatusFilter.expired:
@@ -278,7 +257,6 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
         final haystack = '${c.name} ${c.registration} ${c.vehicleName}'.toLowerCase();
         if (!haystack.contains(query)) return false;
       }
-
       if (_startMonthFilter != null) {
         if (c.startAt == null) return false;
         if (c.startAt!.year != _startMonthFilter!.year ||
@@ -306,51 +284,17 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
     };
   }
 
-  InputDecoration _fieldDecoration(bool isDark, {String? hint, IconData? suffix}) {
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB);
-    final textColor = isDark ? Colors.white54 : Colors.black38;
-
-    return InputDecoration(
-      filled: true,
-      fillColor: cardColor,
-      hintText: hint,
-      hintStyle: TextStyle(color: textColor, fontSize: 13.5),
-      suffixIcon: suffix != null
-          ? Icon(suffix, color: textColor, size: 20)
-          : null,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: borderColor),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: borderColor),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(width: 1.4, color: Color(0xFF34D399)), // Mint green focus
-      ),
-    );
-  }
-
-  Widget custominputformfield(String? example, IconData? icn, TextEditingController controller, bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: controller,
-          style: TextStyle(color: isDark ? Colors.white : Colors.black),
-          decoration: _fieldDecoration(isDark, hint: example, suffix: icn),
-        ),
-      ],
-    );
-  }
-
-  Widget toggleswitch(String label, StatusFilter value, Color accent, int count, bool isDark) {
+  Widget toggleswitch(String label, StatusFilter value, int count, bool isDark) {
     final isSelected = _statusFilter == value;
-    final textColor = isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87);
+    
+    // Use the neon colors for the selected tab to match the Dribbble design
+    Color activeColor = Colors.white;
+    if (value == StatusFilter.expired) activeColor = badgePink;
+    if (value == StatusFilter.expiringSoon) activeColor = accentOrange;
+    if (value == StatusFilter.all && isDark) activeColor = Colors.white24;
+    if (value == StatusFilter.all && !isDark) activeColor = Colors.black12;
+
+    final textColor = isSelected ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.white54 : Colors.black54);
     
     return InkWell(
       onTap: () => setState(() => _statusFilter = value),
@@ -359,507 +303,207 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
         alignment: Alignment.center,
-        margin: const EdgeInsets.symmetric(horizontal: 3),
+        margin: const EdgeInsets.symmetric(horizontal: 2),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: isSelected ? accent : Colors.transparent,
+          color: isSelected ? activeColor : Colors.transparent,
         ),
         child: Text(
           '$label ($count)',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 11.5,
-            letterSpacing: 0.4,
-            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-            color: textColor,
+          style: GoogleFonts.outfit(
+            fontSize: 12,
+            letterSpacing: 0.2,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected && value != StatusFilter.all ? Colors.white : textColor,
           ),
         ),
       ),
     );
   }
 
-  Widget _statusDot(Color color, bool urgent) {
-    return AnimatedBuilder(
-      animation: _pulseController,
-      builder: (context, child) {
-        final t = urgent ? _pulseController.value : 1.0;
-        return Container(
-          width: 14,
-          height: 14,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.4 + t * 0.6),
-            shape: BoxShape.circle,
-            boxShadow: urgent
-                ? [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.5 * t),
-                      blurRadius: 10 * t,
-                      spreadRadius: 3 * t,
-                    ),
-                  ]
-                : null,
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _statusBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 5),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(2)),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11.5,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0,
-          color: color,
-        ),
-      ),
-    );
-  }
-
-  Widget _clientCardShell({
-    required Widget child,
-    required VoidCallback onTap,
-    required Color status,
-    required bool urgent,
-    required bool isDark,
-  }) {
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final defaultBorderColor = isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB);
-
-    return AnimatedBuilder(
-      animation: _pulseController,
-      child: child,
-      builder: (context, cardChild) {
-        final t = urgent ? _pulseController.value : 0.0;
-        final borderAlpha = urgent ? (30 + t * 190).round() : 255;
-        final currentBorderColor = urgent ? status.withAlpha(borderAlpha) : defaultBorderColor;
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: currentBorderColor, width: urgent ? 2 : 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-              if (urgent)
-                BoxShadow(
-                  color: status.withValues(alpha: 0.01 * t),
-                  blurRadius: 14 * t,
-                  spreadRadius: 1 * t,
-                ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(18),
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 10,
-                ),
-                child: cardChild, 
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget clientcard(_ClientRecord client, bool isDark) {
+  // ─── DRIBBBLE STYLE CARD (Matches Dashboard Perfectly) ───
+  Widget clientcard(_ClientRecord client, bool isDark, Color cardCol) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final status = _classify(client.expiresAt, today);
-    final statusColor = _statusColor(status);
-    final borderColor = _borderColor(status);
-    final statusText = _statusText(status, client.expiresAt, today);
-    final initial = client.name.isNotEmpty ? client.name[0].toUpperCase() : '?';
-    final isUrgent = status == ExpiryStatus.expired || status == ExpiryStatus.expiringSoon;
     
-    final textColor = isDark ? Colors.white : Colors.black;
-    final subTextColor = isDark ? Colors.white70 : Colors.black87;
+    bool isUrgent = status == ExpiryStatus.expired;
+    bool isUpcoming = status == ExpiryStatus.expiringSoon;
 
-    return _clientCardShell(
-      isDark: isDark,
-      status: statusColor,
-      urgent: isUrgent,
-      onTap: () async {
+    Color badgeColor = isUrgent ? badgePink : (isUpcoming ? accentOrange : limeGreen);
+    String badgeText = isUrgent ? 'High' : (isUpcoming ? 'Med' : 'Low');
+
+    Color textMain = isDark ? Colors.white : Colors.black87;
+    Color textSub = isDark ? Colors.white70 : Colors.black54;
+
+    return InkWell(
+      onTap: () {
         if (!client.id.startsWith('fake_')) {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => InsuranceDetailView(docid: client.id),
-            ),
-          );
-          if (mounted) getData();
+          Navigator.push(context, MaterialPageRoute(builder: (context) => InsuranceDetailView(docid: client.id))).then((_) => getData());
         } else {
-           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('This is a demo record.')),
-           );
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This is a demo record.')));
         }
       },
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const SizedBox(width: 8),
-          _statusDot(statusColor, isUrgent),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: cardCol, 
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB)),
+          boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  client.vehicleName.isEmpty ? '—' : client.vehicleName,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: badgeColor, borderRadius: BorderRadius.circular(12)),
+                  child: Text(badgeText, style: GoogleFonts.outfit(color: isUrgent ? Colors.white : Colors.black, fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
-                Text(
-                  '${client.registration} • ${client.type}',
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: subTextColor,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                _statusBadge(statusText, statusColor),
+                Row(
+                  children: [
+                    Icon(Icons.circle, color: badgeBlue, size: 8),
+                    const SizedBox(width: 4),
+                    Text(client.type, style: GoogleFonts.outfit(color: textMain, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                )
               ],
             ),
-          ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              AnimatedBuilder(
-                animation: _pulseController,
-                builder: (context, _) {
-                  final t = isUrgent ? _pulseController.value : 1.0;
-                  final baseColor = borderColor ?? const Color(0xFF28A20E);
-
-                  return Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isUrgent
-                          ? baseColor.withValues(alpha: 0.4 + t * 0.6)
-                          : baseColor,
-                    ),
-                    child: Text(
-                      initial,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 20,
-                child: Text(
-                  client.name,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: subTextColor,
+            const SizedBox(height: 14),
+            Text(client.name, style: GoogleFonts.outfit(color: textMain, fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.directions_car_rounded, color: textSub, size: 14),
+                const SizedBox(width: 6),
+                Text('${client.vehicleName} · ${client.registration}', style: GoogleFonts.outfit(color: textSub, fontSize: 13)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(_statusText(status, client.expiresAt, today), style: GoogleFonts.outfit(color: textSub, fontSize: 12)),
+                SizedBox(
+                  width: 50,
+                  height: 24,
+                  child: Stack(
+                    children: [
+                      Positioned(right: 0, child: CircleAvatar(radius: 12, backgroundColor: badgeBlue, child: Text('A', style: GoogleFonts.outfit(fontSize: 10, color: Colors.white)))),
+                      Positioned(right: 12, child: CircleAvatar(radius: 12, backgroundColor: badgePink, child: Text('B', style: GoogleFonts.outfit(fontSize: 10, color: Colors.white)))),
+                      Positioned(right: 24, child: CircleAvatar(radius: 12, backgroundColor: chartCyan, child: Text('C', style: GoogleFonts.outfit(fontSize: 10, color: Colors.black)))),
+                    ],
                   ),
-                ),
-              ),
-            ],
-          ),
-        ],
+                )
+              ],
+            )
+          ],
+        ),
       ),
-    );
-  }
-
-  Future<void> _pickStartMonth(bool isDark) async {
-    int selectedYear = _startMonthFilter?.year ?? DateTime.now().year;
-    int selectedMonth = _startMonthFilter?.month ?? DateTime.now().month;
-    
-    final dialogBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : Colors.black;
-
-    await showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            return Dialog(
-              backgroundColor: dialogBg,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Filter by start month', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: textColor)),
-                    const SizedBox(height: 4),
-                    Text('Shows policies whose start date falls in this month', style: GoogleFonts.poppins(fontSize: 11.5, color: isDark ? Colors.white54 : const Color(0xFF6B7280))),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: selectedMonth,
-                            dropdownColor: dialogBg,
-                            style: TextStyle(color: textColor),
-                            decoration: _fieldDecoration(isDark, hint: 'Month'),
-                            items: List.generate(12, (i) => i + 1).map((m) => DropdownMenuItem(value: m, child: Text(_monthNames[m - 1]))).toList(),
-                            onChanged: (v) => setDialogState(() => selectedMonth = v ?? selectedMonth),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: DropdownButtonFormField<int>(
-                            initialValue: selectedYear,
-                            dropdownColor: dialogBg,
-                            style: TextStyle(color: textColor),
-                            decoration: _fieldDecoration(isDark, hint: 'Year'),
-                            items: List.generate(6, (i) => DateTime.now().year - 4 + i).map((y) => DropdownMenuItem(value: y, child: Text('$y'))).toList(),
-                            onChanged: (v) => setDialogState(() => selectedYear = v ?? selectedYear),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        if (_startMonthFilter != null)
-                          Expanded(
-                            child: TextButton(
-                              onPressed: () {
-                                setState(() => _startMonthFilter = null);
-                                Navigator.pop(ctx);
-                              },
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(width: 0.5, color: isDark ? Colors.white24 : const Color(0xFFE5E7EB))),
-                              ),
-                              child: Text('Clear', style: GoogleFonts.poppins(fontSize: 12, color: textColor)),
-                            ),
-                          ),
-                        if (_startMonthFilter != null) const SizedBox(width: 10),
-                        Expanded(
-                          child: TextButton(
-                            onPressed: () {
-                              setState(() => _startMonthFilter = DateTime(selectedYear, selectedMonth));
-                              Navigator.pop(ctx);
-                            },
-                            style: TextButton.styleFrom(
-                              backgroundColor: const Color(0xFF34D399),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                            child: Text('Apply', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0F1714) : const Color(0xFFF6FBF8);
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final bgCol = isDark ? bgDark : const Color(0xFFF3F4F8);
+    final cardCol = isDark ? const Color(0xFF1A1C23) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF111827);
     final subTextColor = isDark ? Colors.white54 : const Color(0xFF6B7280);
 
     final indexes = _visibleClients;
-    final monthLabel = _startMonthFilter == null
-        ? 'This Month'
-        : '${_monthNames[_startMonthFilter!.month - 1]} ${_startMonthFilter!.year}';
+    final monthLabel = _startMonthFilter == null ? 'This Month' : '${_monthNames[_startMonthFilter!.month - 1]} ${_startMonthFilter!.year}';
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: bgCol,
       appBar: AppBar(
-        backgroundColor: cardColor,
+        backgroundColor: bgCol,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Customers',
-              style: GoogleFonts.poppins(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: textColor,
-              ),
-            ),
-            Text(
-              '$total_data_entry clients registered',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: subTextColor,
-              ),
-            ),
+            Text('All Customers', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold, color: textColor)),
+            Text('$total_data_entry clients registered', style: GoogleFonts.outfit(fontSize: 12, color: subTextColor)),
           ],
         ),
-        actions: [
-          TextButton.icon(
-            onPressed: () => _pickStartMonth(isDark),
-            label: Text(
-              monthLabel,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
-            ),
-            icon: Icon(
-              Icons.calendar_month,
-              size: 18,
-              color: textColor,
-            ),
-          ),
-          if (_startMonthFilter != null)
-            IconButton(
-              tooltip: 'Clear month filter',
-              icon: Icon(Icons.close, size: 18, color: subTextColor),
-              onPressed: () => setState(() => _startMonthFilter = null),
-            ),
-          const SizedBox(width: 4),
-        ],
       ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: getData,
-          color: const Color(0xFF34D399),
-          backgroundColor: cardColor,
+          color: accentOrange,
+          backgroundColor: cardCol,
           child: _loading
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFF34D399)))
+              ? Center(child: CircularProgressIndicator(color: accentOrange))
               : ListView(
                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                   children: [
-                    // ── Status filter row ──
+                    // ── Search Bar ──
                     Container(
-                      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 2),
+                      height: 46,
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(14),
+                        color: cardCol,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB)),
                       ),
-                      child: Builder(
-                        builder: (context) {
-                          final counts = _statusCounts;
-                          return Row(
-                            children: [
-                              Expanded(
-                                child: toggleswitch(
-                                  'All',
-                                  StatusFilter.all,
-                                  isDark ? const Color(0xFF3A3A3A) : Colors.black,
-                                  counts[StatusFilter.all]!,
-                                  isDark
-                                ),
-                              ),
-                              Expanded(
-                                child: toggleswitch(
-                                  'Expired',
-                                  StatusFilter.expired,
-                                  const Color.fromARGB(255, 245, 3, 3),
-                                  counts[StatusFilter.expired]!,
-                                  isDark
-                                ),
-                              ),
-                              Expanded(
-                                child: toggleswitch(
-                                  '40 Days',
-                                  StatusFilter.expiringSoon,
-                                  const Color.fromARGB(255, 255, 124, 2),
-                                  counts[StatusFilter.expiringSoon]!,
-                                  isDark
-                                ),
-                              ),
-                            ],
-                          );
-                        },
+                      child: TextField(
+                        controller: search,
+                        style: GoogleFonts.outfit(fontSize: 14, color: textColor),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          prefixIcon: Icon(Icons.search_rounded, color: subTextColor, size: 20),
+                          hintText: 'Search clients, vehicles...',
+                          hintStyle: GoogleFonts.outfit(color: subTextColor, fontSize: 14),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    custominputformfield(
-                      'Search by client name, registration, vehicle...',
-                      Icons.search,
-                      search,
-                      isDark
-                    ),
+                    const SizedBox(height: 16),
 
-                    // ── Section label ──
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(4, 18, 4, 10),
+                    // ── IOS Segmented Filter ──
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: cardCol,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB)),
+                      ),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'CLIENTS · BY EXPIRY',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.2,
-                              color: textColor,
-                            ),
-                          ),
-                          Text(
-                            '${indexes.length} shown',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              color: subTextColor,
-                            ),
-                          ),
+                          Expanded(child: toggleswitch('All', StatusFilter.all, _statusCounts[StatusFilter.all]!, isDark)),
+                          Expanded(child: toggleswitch('High', StatusFilter.expired, _statusCounts[StatusFilter.expired]!, isDark)),
+                          Expanded(child: toggleswitch('Med', StatusFilter.expiringSoon, _statusCounts[StatusFilter.expiringSoon]!, isDark)),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 24),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Client List', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
+                        Text('${indexes.length} shown', style: GoogleFonts.outfit(fontSize: 12, color: subTextColor)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
 
                     if (indexes.isEmpty)
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 40),
+                        padding: const EdgeInsets.symmetric(vertical: 60),
                         child: Column(
                           children: [
-                            Icon(
-                              Icons.inbox_outlined,
-                              size: 36,
-                              color: subTextColor,
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'No clients match this filter',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: subTextColor,
-                              ),
-                            ),
+                            Icon(Icons.inbox_rounded, size: 48, color: isDark ? Colors.white24 : Colors.black26),
+                            const SizedBox(height: 12),
+                            Text('No clients match this filter', style: GoogleFonts.outfit(fontSize: 14, color: subTextColor)),
                           ],
                         ),
                       ),
@@ -868,7 +512,7 @@ class _SalesState extends State<Sales> with SingleTickerProviderStateMixin {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: indexes.length,
-                      itemBuilder: (context, index) => clientcard(indexes[index], isDark),
+                      itemBuilder: (context, index) => clientcard(indexes[index], isDark, cardCol),
                     ),
                   ],
                 ),
