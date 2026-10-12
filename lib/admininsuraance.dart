@@ -8,36 +8,6 @@ import 'package:insurance/quickactions/renewpolicy.dart';
 import 'package:insurance/quickactions/viewclientlist.dart';
 import 'package:insurance/services/supabase_service.dart';
 
-Color _statusColor(String status) {
-  switch (status) {
-    case 'urgent':
-      return Colors.red;
-    case 'upcoming':
-      return Colors.orange;
-    case 'active':
-      return Colors.green;
-    case 'lapsed':
-      return Colors.red.shade900;
-    default:
-      return Colors.blueGrey;
-  }
-}
-
-String _statusLabel(String status) {
-  switch (status) {
-    case 'urgent':
-      return 'Urgent';
-    case 'upcoming':
-      return 'Upcoming';
-    case 'active':
-      return 'Active';
-    case 'lapsed':
-      return 'Lapsed';
-    default:
-      return status;
-  }
-}
-
 class InsuranceDashboard extends StatefulWidget {
   const InsuranceDashboard({super.key});
 
@@ -46,15 +16,20 @@ class InsuranceDashboard extends StatefulWidget {
 }
 
 class _InsuranceDashboardState extends State<InsuranceDashboard> {
-  int navIndex = 0;
-  String selectedFilter = 'All';
-  bool isRefreshing = false;
   bool _loading = true;
 
-  final List<String> filters = const ['All', 'Active', 'Expiring', 'Lapsed'];
+  // Exact Colors from the Dribbble Inspiration
+  final Color bgDark = const Color(0xFF0D0E12); 
+  final Color cardDark = const Color(0xFF1A1C23); 
+  final Color limeGreen = const Color(0xFFB2F068); 
+  final Color accentOrange = const Color(0xFFFF6B4A); 
+  final Color badgePink = const Color(0xFFFF2E7E); 
+  final Color badgeBlue = const Color(0xFF3B82F6); 
+  final Color chartCyan = const Color(0xFF00D1D1); 
 
   DashboardMetrics _metrics = const DashboardMetrics();
   List<Map<String, String>> recentPolicies = [];
+  List<Map<String, String>> lapsedPolicies = [];
 
   @override
   void initState() {
@@ -62,62 +37,58 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
     _loadDashboardData();
   }
 
-  // =======================================================================
-  // HYBRID DATA LOADER: REAL DB + FAKE DEMO DATA
-  // =======================================================================
   Future<void> _loadDashboardData() async {
     setState(() => _loading = true);
     try {
-      // 1. Fetch REAL data from Supabase
       DashboardMetrics realMetrics = await SupabaseService.getDashboardMetrics();
       List<Map<String, String>> realRecent = await SupabaseService.getRecentPolicies(limit: 6);
 
-      // 2. If DB is empty, use fake numbers for the demo
       if (realMetrics.totalPolicies == 0) {
         _metrics = const DashboardMetrics(
-          immediateAction: 8,
-          upcomingRenewals: 34,
-          lapsedPolicies: 12,
+          immediateAction: 0, 
+          upcomingRenewals: 3,
+          lapsedPolicies: 2,
           activePolicies: 250,
-          renewedThisMonth: 105,
-          totalPolicies: 304,
+          renewedThisMonth: 22, 
+          totalPolicies: 72,
         );
       } else {
-        _metrics = realMetrics; // Use the real numbers!
+        _metrics = realMetrics; 
       }
 
-      // 3. Create some fake policies
       final fakePolicies = [
         {
           'id': 'fake1',
           'customer': 'Rahul Menon',
           'type': 'Comprehensive',
-          'vehicle': 'Toyota Innova · KL-07-AB-1234',
-          'note': 'Expires in 3 days',
+          'vehicle': 'Toyota Innova',
+          'note': '9:30 - 10:30 AM', 
           'status': 'urgent',
         },
         {
           'id': 'fake2',
           'customer': 'Priya Sharma',
           'type': 'Third Party',
-          'vehicle': 'Maruti Swift · KL-01-CD-5678',
-          'note': 'Expires in 12 days',
+          'vehicle': 'Maruti Swift',
+          'note': 'Due Date: Dec 20',
           'status': 'upcoming',
         },
         {
           'id': 'fake3',
           'customer': 'Anil Kumar',
           'type': 'B2B',
-          'vehicle': 'Tata Nexon · KL-10-EF-9012',
-          'note': 'Lapsed 2 days ago',
+          'vehicle': 'Tata Nexon',
+          'note': 'Due Date: Dec 15',
           'status': 'lapsed',
         },
       ];
 
-      // 4. Combine them! Real policies go at the top, fake ones fill the bottom
+      final allPols = [...realRecent, ...fakePolicies];
+      
       if (mounted) {
         setState(() {
-          recentPolicies = [...realRecent, ...fakePolicies].take(6).toList();
+          recentPolicies = allPols.take(6).toList();
+          lapsedPolicies = allPols.where((p) => p['status'] == 'lapsed' || p['status'] == 'urgent').take(4).toList();
           _loading = false;
         });
       }
@@ -127,284 +98,20 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
     }
   }
 
-  // Quick actions button
-  Widget quickaction(String label, IconData icon, Color colr, int tapvalue) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: () async {
-        switch (tapvalue) {
-          case 1:
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const addcustomer(mode: 0)),
-            );
-            _loadDashboardData();
-            break;
-          case 2:
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const Sales()),
-            );
-            _loadDashboardData();
-            break;
-          case 3:
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const RenewPolicyScreen()),
-            );
-            _loadDashboardData();
-            break;
-          case 4:
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const FileClaimScreen()),
-            );
-            _loadDashboardData();
-            break;
-          case 5:
-          case 6:
-          case 7:
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const Sales()),
-            );
-            _loadDashboardData();
-            break;
-          case 8:
-            await _loadDashboardData();
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Dashboard synchronized with Supabase')),
-              );
-            }
-            break;
-        }
-      },
-      child: Container(
-        width: 74,
-        height: 74,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: colr.withValues(alpha: 0.3), width: 1.8),
-          boxShadow: [
-            BoxShadow(color: colr.withValues(alpha: 0.15), blurRadius: 8),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: colr, size: 22),
-            SizedBox(height: 6),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
-                overflow: TextOverflow.ellipsis,
-                color: colr,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget hiuser(bool isDark) {
-    return Container(
-      height: 70,
-      margin: EdgeInsets.only(top: 8, bottom: 12),
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [Color(0xFF0F3D33), Color(0xFF064E3B)]
-              : [Color(0xFFE0F7F1), Color(0xFFD1FAE5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark
-              ? Color(0xFF14B8A6).withValues(alpha: 0.4)
-              : Color(0xFFA7F3D0).withValues(alpha: 0.5),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Hi, ${SupabaseService.currentUserName} 👋',
-                style: GoogleFonts.dmSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : const Color(0xFF0A0A0A),
-                  letterSpacing: -0.4,
-                ),
-              ),
-              Text(
-                'Here is your dashboard overview',
-                style: TextStyle(
-                  fontSize: 11,
-                  letterSpacing: 0.5,
-                  color: isDark ? const Color(0xFFB0B0B0) : const Color(0xFF4B5563),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 10),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [const Color(0xFF2DD4BF), const Color(0xFF34D399)]
-                    : [const Color(0xFF0D9488), const Color(0xFF059669)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: (isDark ? const Color(0xFF2DD4BF) : const Color(0xFF0D9488))
-                      .withValues(alpha: 0.4),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                SupabaseService.currentUserName.isNotEmpty
-                    ? SupabaseService.currentUserName[0].toUpperCase()
-                    : 'A',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _searchBar(bool isDark, Color cardColor, Color textColor) {
-    return Container(
-      height: 46,
-      margin: EdgeInsets.only(bottom: 14),
-      padding: EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: isDark ? Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? Color(0xFF3A3A3A) : Color(0xFFE5E7EB),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.search_rounded,
-            size: 20,
-            color: isDark ? Colors.white54 : Colors.black45,
-          ),
-          SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              style: TextStyle(fontSize: 13, color: textColor),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                isDense: true,
-                hintText: 'Search customers or policies',
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: isDark ? Colors.white38 : Colors.black38,
-                ),
-              ),
-            ),
-          ),
-          Icon(
-            Icons.tune_rounded,
-            size: 18,
-            color: isDark ? Color(0xFF34D399) : Color(0xFF059669),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _filterChips(bool isDark) {
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: filters.length,
-        separatorBuilder: (_, _) => SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final f = filters[index];
-          final selected = f == selectedFilter;
-          final accent = isDark ? Color(0xFF34D399) : Color(0xFF059669);
-          return ChoiceChip(
-            label: Text(f),
-            selected: selected,
-            onSelected: (_) => setState(() => selectedFilter = f),
-            showCheckmark: false,
-            labelStyle: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: selected
-                  ? Colors.white
-                  : (isDark ? Colors.white70 : Colors.black87),
-            ),
-            selectedColor: accent,
-            backgroundColor: isDark ? Color(0xFF1E1E1E) : Colors.white,
-            side: BorderSide(
-              color: selected
-                  ? Colors.transparent
-                  : (isDark ? Color(0xFF3A3A3A) : Color(0xFFE5E7EB)),
-            ),
-            padding: EdgeInsets.symmetric(horizontal: 10),
-          );
-        },
-      ),
-    );
-  }
-
-void _showSettingsDialog() {
+  void _showSettingsDialog() {
     final email = SupabaseService.currentUserEmail ?? 'Not logged in';
     final name = SupabaseService.currentUserName;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        backgroundColor: cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
           children: [
-            Icon(Icons.settings_outlined, color: Color(0xFF059669)),
-            SizedBox(width: 10),
-            // FIX: Added Expanded here so it doesn't overflow on smaller screens
+            Icon(Icons.settings_outlined, color: accentOrange),
+            const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                'Account & Backend',
-                style: TextStyle(fontSize: 18),
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text('Account', style: GoogleFonts.outfit(fontSize: 18, color: Colors.white)),
             ),
           ],
         ),
@@ -412,19 +119,9 @@ void _showSettingsDialog() {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('User: $name', style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text('User: $name', style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: Colors.white)),
             const SizedBox(height: 4),
-            Text('Email: $email', style: const TextStyle(fontSize: 13, color: Colors.grey)),
-            const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 8),
-            const Text('Backend: Supabase Cloud', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            // FIX: Let the long ID wrap to the next line naturally
-            const Text(
-              'Project: xpdtgngkkjihmconczuy', 
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
+            Text('Email: $email', style: GoogleFonts.outfit(fontSize: 13, color: Colors.white54)),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -433,642 +130,445 @@ void _showSettingsDialog() {
                   Navigator.pop(ctx);
                   await SupabaseService.signOut();
                   if (!context.mounted) return;
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const Login()),
-                  );
+                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const Login()));
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
+                  backgroundColor: badgePink,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 icon: const Icon(Icons.logout_rounded, size: 18),
-                label: const Text('Sign Out'),
+                label: Text('Sign Out', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
               ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }
-  Widget _recentPolicyTile(Map<String, String> item, bool isDark) {
-    final color = _statusColor(item['status'] ?? 'active');
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: () {
-        if (item['id'] != null && !item['id']!.startsWith('fake')) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => InsuranceDetailView(docid: item['id']!),
-            ),
-          ).then((_) => _loadDashboardData());
-        } else {
-           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('This is a demo record.')),
-           );
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.directions_car_filled_rounded,
-                color: color,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+
+  @override
+  Widget build(BuildContext context) {
+    int displayCount = 0;
+    String badgeText = "Valid ✅";
+    String suffixText = " right now.";
+
+    if (_metrics.immediateAction > 0) {
+      displayCount = _metrics.immediateAction;
+      badgeText = "Urgent 📈";
+      suffixText = " for Today.";
+    } else if (_metrics.upcomingRenewals > 0) {
+      displayCount = _metrics.upcomingRenewals;
+      badgeText = "Upcoming 🗓️";
+      suffixText = " coming up.";
+    }
+
+    return Scaffold(
+      backgroundColor: bgDark,
+      body: Stack(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: RefreshIndicator(
+              color: accentOrange,
+              backgroundColor: cardDark,
+              onRefresh: _loadDashboardData,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 120), 
                 children: [
-                  Text(
-                    item['customer'] ?? '',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : Colors.black87,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hello 👋',
+                            style: GoogleFonts.outfit(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            '${SupabaseService.currentUserName}!',
+                            style: GoogleFonts.outfit(fontSize: 14, color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white24)),
+                            child: const Icon(Icons.search_rounded, color: Colors.white, size: 18),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white24)),
+                            child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 18),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(26),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFCA5A5), Color(0xFFD8B4FE), Color(0xFF93C5FD)], 
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(color: const Color(0xFFD8B4FE).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8)),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 16),
+                                const SizedBox(width: 6),
+                                Text('Today', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(color: Colors.white.withOpacity(0.3), borderRadius: BorderRadius.circular(20)),
+                              child: Text('AI-Report', style: GoogleFonts.outfit(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 11)),
+                            )
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        Text("Today's Overview", style: GoogleFonts.outfit(color: Colors.white.withOpacity(0.9), fontSize: 13)),
+                        const SizedBox(height: 2),
+                        Text("You Have $displayCount", style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, height: 1.2)),
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text("Policies ", style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, height: 1.2)),
+                            Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(color: Colors.white.withOpacity(0.3), borderRadius: BorderRadius.circular(12)),
+                              child: Text(badgeText, style: GoogleFonts.outfit(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                            Text(suffixText, style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, height: 1.2)),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${item['type']} · ${item['vehicle']}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? const Color(0xFFB0B0B0) : const Color(0xFF666666),
+                  const SizedBox(height: 16),
+
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 11,
+                        child: Container(
+                          height: 220,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(color: limeGreen, borderRadius: BorderRadius.circular(26)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Lapsed Policies', style: GoogleFonts.outfit(color: Colors.black, fontSize: 15, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 14),
+                              ...lapsedPolicies.map((p) => Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(3),
+                                      decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
+                                      // FIX: Removed const here
+                                      child: Icon(Icons.check, color: limeGreen, size: 10), 
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        p['customer'] ?? '',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.outfit(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w600),
+                                      ),
+                                    )
+                                  ],
+                                ),
+                              )),
+                              if (lapsedPolicies.isEmpty) ...[
+                                _dummyCheckRow('All caught up!'),
+                              ]
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      
+                      Expanded(
+                        flex: 10,
+                        child: SizedBox(
+                          height: 220,
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(24)),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 44,
+                                        height: 44,
+                                        child: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            // FIX: Removed const here
+                                            CircularProgressIndicator(
+                                              value: 0.3, 
+                                              color: badgePink,
+                                              backgroundColor: Colors.white10,
+                                              strokeWidth: 5,
+                                              strokeCap: StrokeCap.round,
+                                            ),
+                                            Text('30%', style: GoogleFonts.outfit(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text('Renewed', style: GoogleFonts.outfit(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                                            ),
+                                            Text('${_metrics.renewedThisMonth}/${_metrics.totalPolicies} total', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 10)),
+                                          ],
+                                        ),
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              Expanded(
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(24)),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          _chartBar(28), _chartBar(14), _chartBar(36),
+                                          _chartBar(18), _chartBar(24), _chartBar(10),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.track_changes_rounded, color: Colors.white54, size: 12),
+                                          const SizedBox(width: 6),
+                                          Text('Active: ${_metrics.activePolicies}', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 11)),
+                                        ],
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Recent Policies', style: GoogleFonts.outfit(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                      const Icon(Icons.arrow_outward_rounded, color: Colors.white54, size: 18),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  
+                  ...recentPolicies.map((item) => _buildRecentItem(item)),
+                ],
+              ),
+            ),
+          ),
+
+          Positioned(
+            bottom: 24, 
+            left: 24,
+            right: 24,
+            child: Container(
+              height: 70,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: cardDark.withOpacity(0.95), 
+                borderRadius: BorderRadius.circular(35), 
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20, offset: const Offset(0, 10))
+                ]
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.home_filled, color: accentOrange, size: 26),
+                    onPressed: () {}, 
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.people_alt_rounded, color: Colors.white54, size: 24),
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const Sales())).then((_) => _loadDashboardData());
+                    },
+                  ),
+                  
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const addcustomer(mode: 0))).then((_) => _loadDashboardData());
+                    },
+                    child: Container(
+                      height: 52,
+                      width: 52,
+                      decoration: BoxDecoration(
+                        color: accentOrange,
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: accentOrange.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))]
+                      ),
+                      child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
                     ),
+                  ),
+
+                  IconButton(
+                    icon: const Icon(Icons.bar_chart_rounded, color: Colors.white54, size: 24),
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => const FileClaimScreen())).then((_) => _loadDashboardData());
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.person_rounded, color: Colors.white54, size: 24),
+                    onPressed: _showSettingsDialog,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _statusLabel(item['status'] ?? 'active'),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item['note'] ?? '',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isDark ? const Color(0xFFB0B0B0) : const Color(0xFF666666),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  NavigationDestination _navItem(
-    IconData icon,
-    IconData selectedIcon,
-    String label,
-    int index,
-    bool isDark,
-  ) {
-    return NavigationDestination(
-      icon: Icon(icon, size: 18),
-      selectedIcon: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 2),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isDark
-                ? [Color(0xFF2DD4BF), Color(0xFF34D399)]
-                : [Color(0xFF0D9488), Color(0xFF059669)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: (isDark ? Color(0xFF2DD4BF) : Color(0xFF0D9488))
-                  .withValues(alpha: 0.4),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(selectedIcon, color: Colors.white, size: 22),
-      ),
-      label: label,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
-
-    final bgColor = isDark ? Color(0xFF0F1714) : Color(0xFFF6FBF8);
-    final cardColor = isDark ? Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : Color(0xFF1A1A1A);
-    final accent = isDark ? Color(0xFF34D399) : Color(0xFF059669);
-
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        backgroundColor: cardColor,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '✦ ',
-              style: TextStyle(
-                fontSize: 14,
-                color: isDark
-                    ? const Color(0xFF00E5A0)
-                    : const Color(0xFF059669),
-              ),
-            ),
-            Text(
-              "Insurance Dashboard",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: textColor,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Account & Backend',
-            onPressed: _showSettingsDialog,
-            icon: Icon(Icons.account_circle_outlined, color: textColor),
-          ),
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: () async {
-              await _loadDashboardData();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Dashboard refreshed')),
-                );
-              }
-            },
-            icon: Icon(Icons.refresh_rounded, color: textColor),
-          ),
-          IconButton(
-            tooltip: 'Logout',
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Log out'),
-                  content: const Text('Are you sure you want to log out?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      style: TextButton.styleFrom(foregroundColor: Colors.red),
-                      child: const Text('Logout'),
-                    ),
-                  ],
-                ),
-              );
-              if (confirm == true) {
-                await SupabaseService.signOut();
-                if (!context.mounted) return;
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const Login()),
-                );
-              }
-            },
-            icon: Icon(Icons.logout_rounded, color: textColor),
-          ),
-          const SizedBox(width: 6),
+          )
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const addcustomer(mode: 0)),
-          );
-          _loadDashboardData();
-        },
-        backgroundColor: accent,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'New Policy',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-      ),
-      bottomNavigationBar: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(28),
-          topRight: Radius.circular(28),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: cardColor,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
-                blurRadius: 20,
-                offset: const Offset(0, -5),
-              ),
-            ],
-          ),
-          child: NavigationBarTheme(
-            data: NavigationBarThemeData(
-              labelTextStyle: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: accent,
-                  );
-                }
-                return TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.grey,
-                );
-              }),
-            ),
-            child: NavigationBar(
-              height: 58,
-              elevation: 0,
-              backgroundColor: cardColor,
-              surfaceTintColor: Colors.transparent,
-              selectedIndex: navIndex,
-              onDestinationSelected: (value) async {
-                setState(() => navIndex = value);
-                if (value == 1) {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const Sales()),
-                  );
-                  _loadDashboardData();
-                  if (mounted) setState(() => navIndex = 0);
-                } else if (value == 2) {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RenewPolicyScreen(),
-                    ),
-                  );
-                  _loadDashboardData();
-                  if (mounted) setState(() => navIndex = 0);
-                } else if (value == 3) {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const FileClaimScreen(),
-                    ),
-                  );
-                  _loadDashboardData();
-                  if (mounted) setState(() => navIndex = 0);
-                } else if (value == 4) {
-                  _showSettingsDialog();
-                  if (mounted) setState(() => navIndex = 0);
-                }
-              },
-              indicatorColor: Colors.transparent,
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              destinations: [
-                _navItem(
-                  Icons.dashboard_outlined,
-                  Icons.dashboard_rounded,
-                  'Dashboard',
-                  0,
-                  isDark,
-                ),
-                _navItem(
-                  Icons.people_alt_outlined,
-                  Icons.people_alt_rounded,
-                  'Customers',
-                  1,
-                  isDark,
-                ),
-                _navItem(
-                  Icons.policy_outlined,
-                  Icons.policy_rounded,
-                  'Policies',
-                  2,
-                  isDark,
-                ),
-                _navItem(
-                  Icons.support_agent_outlined,
-                  Icons.support_agent,
-                  'Claims',
-                  3,
-                  isDark,
-                ),
-                _navItem(
-                  Icons.settings_outlined,
-                  Icons.settings_rounded,
-                  'Settings',
-                  4,
-                  isDark,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          color: accent,
-          backgroundColor: cardColor,
-          onRefresh: () async {
-            setState(() => isRefreshing = true);
-            await _loadDashboardData();
-            if (mounted) setState(() => isRefreshing = false);
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: ListView(
-              children: [
-                hiuser(isDark),
-                _searchBar(isDark, cardColor, textColor),
-                _filterChips(isDark),
-                SizedBox(height: 6),
-                custommainheading(
-                  color: Colors.blue,
-                  label: 'Live Actions',
-                  isDark: isDark,
-                ),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    SizedBox(
-                      width:
-                          (MediaQuery.of(context).size.width - 12 * 2 - 10) / 2,
-                      child: DashboardCard(
-                        title: 'Expired Policies',
-                        subtitle: 'Expired in last 30–90 Days',
-                        count: _metrics.lapsedPolicies, 
-                        color: Colors.red,
-                        icon: Icons.cancel_outlined,
-                      ),
-                    ),
-                    SizedBox(
-                      width:
-                          (MediaQuery.of(context).size.width - 12 * 2 - 10) / 2,
-                      child: DashboardCard(
-                        title: 'Immediate Action',
-                        subtitle: 'Expiring in 0–7 Days',
-                        count: _metrics.immediateAction, 
-                        color: const Color.fromARGB(255, 236, 117, 13),
-                        icon: Icons.warning_rounded,
-                      ),
-                    ),
-                    SizedBox(
-                      width:
-                          (MediaQuery.of(context).size.width - 12 * 2 - 10) / 2,
-                      child: DashboardCard(
-                        title: 'Upcoming Renewals',
-                        subtitle: 'Expiring in a month',
-                        count: _metrics.upcomingRenewals, 
-                        color: const Color.fromARGB(255, 7, 132, 117),
-                        icon: Icons.access_time_rounded,
-                      ),
-                    ),
-                    SizedBox(
-                      width:
-                          (MediaQuery.of(context).size.width - 12 * 2 - 10) / 2,
-                      child: DashboardCard(
-                        title: 'Renewed This Month',
-                        subtitle: 'Last 30 days',
-                        count: _metrics.renewedThisMonth, 
-                        color: const Color.fromARGB(255, 60, 168, 10),
-                        icon: Icons.verified_rounded,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 4),
-
-                SizedBox(height: 6),
-                custommainheading(
-                  color: const Color.fromARGB(255, 232, 200, 17),
-                  label: 'Quick Actions',
-                  isDark: isDark,
-                ),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 10,
-                  alignment: WrapAlignment.spaceAround,
-                  children: [
-                    quickaction(
-                      'Add Customer',
-                      Icons.person_add_alt_1,
-                      Color(0xFF3B82F6),
-                      1,
-                    ),
-                    quickaction(
-                      'New Policy',
-                      Icons.add_box_outlined,
-                      Color(0xFF059669),
-                      2,
-                    ),
-                    quickaction(
-                      'Renew Policy',
-                      Icons.autorenew_rounded,
-                      Color(0xFF8B5CF6),
-                      3,
-                    ),
-                    quickaction(
-                      'File Claim',
-                      Icons.assignment_late_outlined,
-                      Color(0xFFF59E0B),
-                      4,
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    custommainheading(
-                      color: Color(0xFFF97316),
-                      label: 'Recent Policies',
-                      isDark: isDark,
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: Text(
-                        'See All',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: accent,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                ...recentPolicies.map(
-                  (item) => _recentPolicyTile(item, isDark),
-                ),
-                SizedBox(height: 90),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
-}
 
-// Custom widgets with theme support
-class custommainheading extends StatelessWidget {
-  final Color color;
-  final String label;
-  final bool isDark;
-
-  const custommainheading({
-    super.key,
-    required this.color,
-    required this.label,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _dummyCheckRow(String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
           Container(
-            width: 4,
-            height: 20,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(2),
-            ),
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(color: Colors.black.withOpacity(0.1), shape: BoxShape.circle),
+            child: const Icon(Icons.circle, color: Colors.transparent, size: 10), 
           ),
-          SizedBox(width: 10),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-          ),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text, style: GoogleFonts.outfit(color: Colors.black54, fontSize: 12, fontWeight: FontWeight.w500))),
         ],
       ),
     );
   }
-}
 
-class DashboardCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final int count;
-  final Color color;
-  final IconData icon;
-  const DashboardCard({
-    super.key,
-    required this.title,
-    required this.subtitle,
-    required this.count,
-    required this.color,
-    required this.icon,
-  });
+  Widget _chartBar(double height) {
+    return Container(
+      width: 10,
+      height: height,
+      decoration: BoxDecoration(color: chartCyan, borderRadius: BorderRadius.circular(10)),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      color: Colors.transparent,
-      shadowColor: color.withValues(alpha: 0.1),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+  Widget _buildRecentItem(Map<String, String> item) {
+    bool isUrgent = item['status'] == 'urgent' || item['status'] == 'lapsed';
+    Color badgeColor = isUrgent ? badgePink : limeGreen;
+    String badgeText = isUrgent ? 'High' : 'Low';
+    if(item['status'] == 'upcoming') { badgeColor = chartCyan; badgeText = 'Med'; }
+
+    return InkWell(
+      onTap: () {
+        if (item['id'] != null && !item['id']!.startsWith('fake')) {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => InsuranceDetailView(docid: item['id']!))).then((_) => _loadDashboardData());
+        } else {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This is a demo record.')));
+        }
+      },
       child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: color.withValues(alpha: .55), width: 1.5),
-        ),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(22)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: color.withValues(alpha: .15),
-              child: Icon(icon, color: color, size: 26),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: badgeColor, borderRadius: BorderRadius.circular(12)),
+                  child: Text(badgeText, style: GoogleFonts.outfit(color: isUrgent ? Colors.white : Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
+                ),
+                Row(
+                  children: [
+                    Icon(Icons.circle, color: badgeBlue, size: 6),
+                    const SizedBox(width: 4),
+                    Text(item['type'] ?? '', style: GoogleFonts.outfit(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ],
+                )
+              ],
             ),
+            const SizedBox(height: 12),
+            Text(item['customer'] ?? '', style: GoogleFonts.outfit(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text(
-              count.toString(),
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+            Row(
+              children: [
+                const Icon(Icons.access_time_rounded, color: Colors.white54, size: 12),
+                const SizedBox(width: 6),
+                Text(item['vehicle'] ?? '', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 12)),
+              ],
             ),
-            const SizedBox(height: 2),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 9),
-            ),
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(item['note'] ?? '', style: GoogleFonts.outfit(color: Colors.white54, fontSize: 11)),
+                SizedBox(
+                  width: 46,
+                  height: 22,
+                  child: Stack(
+                    children: [
+                      Positioned(right: 0, child: CircleAvatar(radius: 11, backgroundColor: badgeBlue, child: Text('A', style: GoogleFonts.outfit(fontSize: 9, color: Colors.white)))),
+                      Positioned(right: 12, child: CircleAvatar(radius: 11, backgroundColor: badgePink, child: Text('B', style: GoogleFonts.outfit(fontSize: 9, color: Colors.white)))),
+                      Positioned(right: 24, child: CircleAvatar(radius: 11, backgroundColor: chartCyan, child: Text('C', style: GoogleFonts.outfit(fontSize: 9, color: Colors.black)))),
+                    ],
+                  ),
+                )
+              ],
+            )
           ],
         ),
       ),
