@@ -108,7 +108,7 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Row(
           children: [
-            Icon(Icons.settings_outlined, color: accentOrange),
+            const Icon(Icons.settings_outlined, color: Colors.white),
             const SizedBox(width: 10),
             Expanded(
               child: Text('Account', style: GoogleFonts.outfit(fontSize: 18, color: Colors.white)),
@@ -170,7 +170,7 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
           SafeArea(
             bottom: false,
             child: RefreshIndicator(
-              color: accentOrange,
+              color: Colors.white,
               backgroundColor: cardDark,
               onRefresh: _loadDashboardData,
               child: ListView(
@@ -288,8 +288,7 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                                     Container(
                                       padding: const EdgeInsets.all(3),
                                       decoration: const BoxDecoration(color: Colors.black, shape: BoxShape.circle),
-                                      // FIX: Removed const here
-                                      child: Icon(Icons.check, color: limeGreen, size: 10), 
+                                      child: Icon(Icons.check, color: limeGreen, size: 10), // CONST REMOVED HERE
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
@@ -331,8 +330,7 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                                         child: Stack(
                                           alignment: Alignment.center,
                                           children: [
-                                            // FIX: Removed const here
-                                            CircularProgressIndicator(
+                                            CircularProgressIndicator( // CONST REMOVED HERE
                                               value: 0.3, 
                                               color: badgePink,
                                               backgroundColor: Colors.white10,
@@ -433,7 +431,7 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.home_filled, color: accentOrange, size: 26),
+                    icon: const Icon(Icons.home_filled, color: Colors.white, size: 26),
                     onPressed: () {}, 
                   ),
                   IconButton(
@@ -451,11 +449,11 @@ class _InsuranceDashboardState extends State<InsuranceDashboard> {
                       height: 52,
                       width: 52,
                       decoration: BoxDecoration(
-                        color: accentOrange,
+                        color: Colors.white,
                         shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: accentOrange.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))]
+                        boxShadow: [BoxShadow(color: Colors.white.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))]
                       ),
-                      child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+                      child: const Icon(Icons.add_rounded, color: Colors.black, size: 28),
                     ),
                   ),
 
