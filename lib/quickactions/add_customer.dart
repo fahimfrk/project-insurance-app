@@ -5,9 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:insurance/services/supabase_service.dart';
 
-// ============================================================================
-// ADD / EDIT INSURANCE CUSTOMER (Multi-step)
-// ============================================================================
 class addcustomer extends StatefulWidget {
   final int mode;
   final String docid;
@@ -18,11 +15,13 @@ class addcustomer extends StatefulWidget {
 }
 
 class _addcustomerState extends State<addcustomer> {
-  // ── Theme ────────────────────────────────────────────────────────────────
-  static const Color _green = Color(0xFF34D399); // Updated to match dashboard mint green
-  static const Color _greenLight = Color(0xFF059669);
+  // ── Theme Colors (Dribbble Palette) ──────────────────────────────────────
+  final Color limeGreen = const Color(0xFFB2F068); 
+  final Color accentOrange = const Color(0xFFFF6B4A); 
+  final Color badgePink = const Color(0xFFFF2E7E); 
+  final Color chartCyan = const Color(0xFF00D1D1); 
   static const double _pagePadding = 20;
-  static const double _radius = 14;
+  static const double _radius = 16;
 
   static const String _other = 'Other';
   static const List<String> _providers = [
@@ -45,7 +44,6 @@ class _addcustomerState extends State<addcustomer> {
 
   int get _lastStep => _steps.length - 1;
 
-  // Dark mode getter so all helpers know the current theme
   bool get isDark => MediaQuery.of(context).platformBrightness == Brightness.dark;
 
   // ── Step 1: customer ─────────────────────────────────────────────────────
@@ -257,21 +255,21 @@ class _addcustomerState extends State<addcustomer> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: isDark ? const Color(0xFF1A1C23) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Row(
           children: [
-            const Icon(Icons.check_circle_rounded, color: _greenLight),
+            Icon(Icons.check_circle_rounded, color: limeGreen),
             const SizedBox(width: 10),
             Text(
               widget.mode == 1 ? 'Updated!' : 'Customer added!',
-              style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+              style: GoogleFonts.outfit(color: isDark ? Colors.white : Colors.black87, fontWeight: FontWeight.bold),
             ),
           ],
         ),
         content: Text(
           message,
-          style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+          style: GoogleFonts.outfit(color: isDark ? Colors.white70 : Colors.black87),
         ),
         actions: [
           TextButton(
@@ -279,16 +277,16 @@ class _addcustomerState extends State<addcustomer> {
               Navigator.of(dialogContext).pop();
               if (mounted) Navigator.of(context).pop();
             },
-            child: Text('Done', style: TextStyle(color: isDark ? _green : _greenLight)),
+            child: Text('Done', style: GoogleFonts.outfit(color: chartCyan, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
 
-  // ── UI blocks with Dark Mode Support ─────────────────────────────────────
+  // ── UI blocks with Dribbble Dark Mode Support ──────────────────────────────
   InputDecoration _decoration({String? hint, IconData? icon, IconData? suffix}) {
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final cardColor = isDark ? const Color(0xFF1A1C23) : Colors.white;
     final borderColor = isDark ? const Color(0xFF3A3A3A) : Colors.black.withOpacity(0.08);
     final hintColor = isDark ? Colors.white38 : Colors.black38;
     final iconColor = isDark ? Colors.white54 : Colors.black38;
@@ -302,40 +300,39 @@ class _addcustomerState extends State<addcustomer> {
       filled: true,
       fillColor: cardColor,
       hintText: hint,
-      hintStyle: TextStyle(color: hintColor, fontSize: 13.5),
+      hintStyle: GoogleFonts.outfit(color: hintColor, fontSize: 13.5),
       counterText: '',
       prefixIcon: icon != null ? Icon(icon, size: 20, color: iconColor) : null,
       suffixIcon: suffix != null ? Icon(suffix, size: 20, color: iconColor) : null,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: border(borderColor),
       enabledBorder: border(borderColor, 1),
-      focusedBorder: border(isDark ? _green : _greenLight, 1.4),
-      errorBorder: border(Colors.redAccent, 1.2),
-      focusedErrorBorder: border(Colors.redAccent, 1.4),
+      focusedBorder: border(chartCyan, 1.5),
+      errorBorder: border(badgePink, 1.2),
+      focusedErrorBorder: border(badgePink, 1.5),
     );
   }
 
   Widget _label(String text, {bool required = true}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Text.rich(
         TextSpan(
           children: [
             TextSpan(
               text: text,
-              style: TextStyle(
-                fontSize: 12.5,
+              style: GoogleFonts.outfit(
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: isDark ? Colors.white : Colors.black87,
-                letterSpacing: 0.2,
               ),
             ),
             if (!required)
               TextSpan(
-                text: '  Optional',
-                style: TextStyle(
+                text: '  (Optional)',
+                style: GoogleFonts.outfit(
                   fontSize: 11,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w400,
                   color: isDark ? Colors.white38 : Colors.black38,
                 ),
               ),
@@ -368,7 +365,7 @@ class _addcustomerState extends State<addcustomer> {
           textInputAction: action,
           inputFormatters: formatters,
           autovalidateMode: AutovalidateMode.onUserInteraction,
-          style: TextStyle(fontSize: 14.5, color: isDark ? Colors.white : Colors.black87),
+          style: GoogleFonts.outfit(fontSize: 14.5, color: isDark ? Colors.white : Colors.black87),
           validator: (v) {
             if (required && (v == null || v.trim().isEmpty)) return '$label is required';
             return validator?.call(v);
@@ -394,7 +391,7 @@ class _addcustomerState extends State<addcustomer> {
         TextFormField(
           controller: controller,
           readOnly: true,
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black87),
+          style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
           onTap: () async {
             FocusScope.of(context).unfocus();
             var init = value ?? initialDate;
@@ -407,8 +404,8 @@ class _addcustomerState extends State<addcustomer> {
               builder: (ctx, child) => Theme(
                 data: Theme.of(ctx).copyWith(
                   colorScheme: isDark 
-                    ? const ColorScheme.dark(primary: _green, surface: Color(0xFF1E1E1E))
-                    : const ColorScheme.light(primary: _greenLight),
+                    ? ColorScheme.dark(primary: accentOrange, surface: const Color(0xFF1A1C23))
+                    : ColorScheme.light(primary: accentOrange),
                 ),
                 child: child!,
               ),
@@ -417,49 +414,48 @@ class _addcustomerState extends State<addcustomer> {
             onPicked(picked);
           },
           validator: (v) => (v == null || v.trim().isEmpty) ? '$label is required' : null,
-          decoration: _decoration(hint: 'dd/mm/yyyy', suffix: Icons.calendar_month_outlined),
+          decoration: _decoration(hint: 'dd/mm/yyyy', suffix: Icons.calendar_month_rounded),
         ),
       ],
     );
   }
 
   Widget _chip(String label, bool selected, VoidCallback onTap) {
-    final activeColor = isDark ? _green : _greenLight;
-    final inactiveBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final inactiveBg = isDark ? const Color(0xFF1A1C23) : Colors.white;
     final inactiveBorder = isDark ? const Color(0xFF3A3A3A) : Colors.black.withOpacity(0.1);
-    final inactiveText = isDark ? Colors.white70 : Colors.black54;
+    final inactiveText = isDark ? Colors.white54 : Colors.black54;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,
       decoration: BoxDecoration(
-        color: selected ? activeColor : inactiveBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: selected ? activeColor : inactiveBorder),
+        color: selected ? chartCyan : inactiveBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: selected ? chartCyan : inactiveBorder),
         boxShadow: selected
-            ? [BoxShadow(color: activeColor.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3))]
+            ? [BoxShadow(color: chartCyan.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))]
             : const [],
       ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (selected) ...[
-                  const Icon(Icons.check_rounded, size: 16, color: Colors.white),
+                  const Icon(Icons.check_rounded, size: 16, color: Colors.black),
                   const SizedBox(width: 6),
                 ],
                 Text(
                   label,
-                  style: TextStyle(
+                  style: GoogleFonts.outfit(
                     fontSize: 13,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    color: selected ? (isDark ? Colors.black : Colors.white) : inactiveText,
+                    fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                    color: selected ? Colors.black : inactiveText,
                   ),
                 ),
               ],
@@ -471,31 +467,30 @@ class _addcustomerState extends State<addcustomer> {
   }
 
   List<Widget> _gap(List<Widget> items) => [
-    for (var i = 0; i < items.length; i++) ...[if (i > 0) const SizedBox(height: 16), items[i]],
+    for (var i = 0; i < items.length; i++) ...[if (i > 0) const SizedBox(height: 20), items[i]],
   ];
 
   Widget _stepHeader(IconData icon, String title, String subtitle) {
-    final activeColor = isDark ? _green : _greenLight;
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: activeColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-          child: Icon(icon, color: activeColor, size: 22),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: accentOrange.withOpacity(0.15), borderRadius: BorderRadius.circular(14)),
+          child: Icon(icon, color: accentOrange, size: 22),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black87),
+                style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: TextStyle(fontSize: 12.5, color: isDark ? Colors.white54 : Colors.black54),
+                style: GoogleFonts.outfit(fontSize: 13, color: isDark ? Colors.white54 : Colors.black54),
               ),
             ],
           ),
@@ -511,7 +506,7 @@ class _addcustomerState extends State<addcustomer> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _stepHeader(icon, title, subtitle),
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
           ...fields,
         ],
       ),
@@ -556,7 +551,7 @@ class _addcustomerState extends State<addcustomer> {
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
             child: _provider == _other
-                ? Padding(padding: const EdgeInsets.only(top: 14), child: _textField(label: 'Company name', hint: 'Enter insurance company name', controller: _customProviderCtrl, icon: Icons.business_outlined, cap: TextCapitalization.words, action: TextInputAction.done))
+                ? Padding(padding: const EdgeInsets.only(top: 16), child: _textField(label: 'Company name', hint: 'Enter insurance company name', controller: _customProviderCtrl, icon: Icons.business_outlined, cap: TextCapitalization.words, action: TextInputAction.done))
                 : const SizedBox(width: double.infinity, height: 0),
           ),
         ],
@@ -592,11 +587,11 @@ class _addcustomerState extends State<addcustomer> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _stepHeader(Icons.fact_check_outlined, 'Review & confirm', 'Check everything before saving.'),
-        const SizedBox(height: 22),
+        const SizedBox(height: 24),
         _reviewCard(step: 0, title: 'Customer', icon: Icons.person_outline_rounded, rows: [_reviewRow('Name', _nameCtrl.text.trim()), _reviewRow('C/O', _careOfCtrl.text.trim()), _reviewRow('Phone', _phoneCtrl.text.trim())]),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         _reviewCard(step: 1, title: 'Vehicle', icon: Icons.directions_car_outlined, rows: [_reviewRow('Vehicle', vehicle), _reviewRow('Year', _yearCtrl.text.trim()), _reviewRow('Registration', _regCtrl.text.trim().toUpperCase())]),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         _reviewCard(step: 2, title: 'Policy', icon: Icons.shield_outlined, rows: [_reviewRow('Provider', _providerName), _reviewRow('Provider code', _codeProviderCtrl.text.trim()), _reviewRow('Start date', _startDate != null ? _fmt(_startDate!) : ''), _reviewRow('Expiry date', _endDate != null ? _fmt(_endDate!) : ''), _reviewRow('Policy type', _policyType ?? '')]),
       ],
     );
@@ -604,47 +599,46 @@ class _addcustomerState extends State<addcustomer> {
 
   Widget _reviewCard({required int step, required String title, required IconData icon, required List<Widget> rows}) {
     final ok = _progress(step) >= 1.0;
-    final activeColor = isDark ? _green : _greenLight;
-    final statusColor = ok ? activeColor : Colors.redAccent;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF3A3A3A) : activeColor.withOpacity(0.2);
+    final statusColor = ok ? limeGreen : badgePink;
+    final cardColor = isDark ? const Color(0xFF1A1C23) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF3A3A3A) : Colors.black.withOpacity(0.08);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      padding: const EdgeInsets.fromLTRB(18, 14, 10, 14),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor, width: 2),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.2 : 0.04), blurRadius: 14, offset: const Offset(0, 6))],
+        border: Border.all(color: borderColor, width: 1.5),
+        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 14, offset: const Offset(0, 6))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 20, color: activeColor),
-              const SizedBox(width: 8),
+              Icon(icon, size: 20, color: chartCyan),
+              const SizedBox(width: 10),
               Expanded(
                 child: Row(
                   children: [
-                    Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: isDark ? Colors.white : Colors.black87)),
-                    const SizedBox(width: 8),
+                    Text(title, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+                    const SizedBox(width: 10),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                      child: Text(ok ? 'Complete' : 'Incomplete', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: statusColor)),
+                      decoration: BoxDecoration(color: statusColor.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
+                      child: Text(ok ? 'Complete' : 'Incomplete', style: GoogleFonts.outfit(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor)),
                     ),
                   ],
                 ),
               ),
               TextButton(
                 onPressed: () => _goTo(step),
-                style: TextButton.styleFrom(foregroundColor: activeColor, visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 10)),
-                child: const Text('Edit', style: TextStyle(fontWeight: FontWeight.w700)),
+                style: TextButton.styleFrom(foregroundColor: chartCyan, visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 10)),
+                child: Text('Edit', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Padding(padding: const EdgeInsets.only(right: 8), child: Column(children: rows)),
         ],
       ),
@@ -658,8 +652,8 @@ class _addcustomerState extends State<addcustomer> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 104, child: Text(label, style: TextStyle(fontSize: 12.5, color: isDark ? Colors.white54 : Colors.black45))),
-          Expanded(child: Text(empty ? '—' : value, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: empty ? (isDark ? Colors.white24 : Colors.black26) : (isDark ? Colors.white : Colors.black87)))),
+          SizedBox(width: 104, child: Text(label, style: GoogleFonts.outfit(fontSize: 13, color: isDark ? Colors.white54 : Colors.black54))),
+          Expanded(child: Text(empty ? '—' : value, style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w600, color: empty ? (isDark ? Colors.white24 : Colors.black26) : (isDark ? Colors.white : Colors.black87)))),
         ],
       ),
     );
@@ -668,7 +662,6 @@ class _addcustomerState extends State<addcustomer> {
   Widget _buildBottomBar() {
     final isReview = _step == _lastStep;
     final enabled = isReview ? (_allComplete && !_saving) : _progress(_step) >= 1.0;
-    final activeColor = isDark ? _green : _greenLight;
 
     return Padding(
       padding: const EdgeInsets.all(_pagePadding),
@@ -680,11 +673,11 @@ class _addcustomerState extends State<addcustomer> {
                 onPressed: _saving ? null : _back,
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(0, 52),
-                  foregroundColor: activeColor,
-                  side: BorderSide(color: activeColor.withOpacity(0.4)),
+                  foregroundColor: isDark ? Colors.white : Colors.black,
+                  side: BorderSide(color: isDark ? Colors.white24 : Colors.black12, width: 1.5),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radius)),
                 ),
-                child: const Text('Back', style: TextStyle(fontWeight: FontWeight.w600)),
+                child: Text('Back', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
               ),
             ),
           if (_step > 0) const SizedBox(width: 12),
@@ -694,7 +687,7 @@ class _addcustomerState extends State<addcustomer> {
               label: isReview ? (widget.mode == 1 ? 'Save Changes' : 'Add Customer') : 'Continue',
               loading: _saving,
               onPressed: enabled ? _next : null,
-              colors: [activeColor, isDark ? const Color(0xFF10B981) : _green],
+              colors: [accentOrange, accentOrange], // Solid Orange to match FAB
               radius: _radius,
               isDark: isDark,
             ),
@@ -706,10 +699,9 @@ class _addcustomerState extends State<addcustomer> {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = isDark ? const Color(0xFF0F1714) : const Color(0xFFF6FBF8);
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final bgCol = isDark ? const Color(0xFF0D0E12) : const Color(0xFFF3F4F8);
+    final cardCol = isDark ? const Color(0xFF1A1C23) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final activeColor = isDark ? _green : _greenLight;
 
     final completed = [for (var i = 0; i < _steps.length; i++) i < _lastStep && i < _maxStep && _progress(i) >= 1.0];
 
@@ -717,9 +709,9 @@ class _addcustomerState extends State<addcustomer> {
       canPop: _step == 0,
       onPopInvokedWithResult: (didPop, _) { if (!didPop) _back(); },
       child: Scaffold(
-        backgroundColor: bgColor,
+        backgroundColor: bgCol,
         appBar: AppBar(
-          backgroundColor: cardColor,
+          backgroundColor: cardCol,
           elevation: 0,
           scrolledUnderElevation: 0,
           centerTitle: true,
@@ -727,23 +719,24 @@ class _addcustomerState extends State<addcustomer> {
           title: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.verified, color: activeColor, size: 22),
+              Icon(Icons.person_add_alt_1_rounded, color: accentOrange, size: 22),
               const SizedBox(width: 8),
               Text(
                 widget.mode == 1 ? 'Edit Insurance' : 'New Insurance',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: textColor),
+                style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
               ),
             ],
           ),
         ),
         body: _loading
-            ? Center(child: CircularProgressIndicator(color: activeColor))
+            ? Center(child: CircularProgressIndicator(color: accentOrange))
             : SafeArea(
                 top: false,
                 child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(_pagePadding, 8, _pagePadding, 18),
+                    Container(
+                      color: cardCol,
+                      padding: const EdgeInsets.fromLTRB(_pagePadding, 8, _pagePadding, 24),
                       child: _StepProgress(
                         steps: _steps,
                         currentStep: _step,
@@ -758,13 +751,13 @@ class _addcustomerState extends State<addcustomer> {
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
                         transitionBuilder: (child, anim) => SlideTransition(
-                          position: Tween<Offset>(begin: Offset(_forward ? 0.1 : -0.1, 0), end: Offset.zero).animate(anim),
+                          position: Tween<Offset>(begin: Offset(_forward ? 0.05 : -0.05, 0), end: Offset.zero).animate(anim),
                           child: FadeTransition(opacity: anim, child: child),
                         ),
                         child: ListView(
                           key: ValueKey(_step),
                           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                          padding: const EdgeInsets.fromLTRB(_pagePadding, 0, _pagePadding, 24),
+                          padding: const EdgeInsets.fromLTRB(_pagePadding, 24, _pagePadding, 24),
                           children: [_buildStepContent()],
                         ),
                       ),
@@ -799,8 +792,10 @@ class _StepProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = isDark ? const Color(0xFF34D399) : const Color(0xFF059669);
+    final activeColor = const Color(0xFF00D1D1); // chartCyan
+    final completeColor = const Color(0xFFB2F068); // limeGreen
     final n = steps.length;
+    
     return Stack(
       children: [
         Positioned(
@@ -810,18 +805,19 @@ class _StepProgress extends StatelessWidget {
           child: Row(
             children: [
               const Expanded(flex: 1, child: SizedBox.shrink()),
-              for (var i = 0; i < n - 1; i++) Expanded(flex: 2, child: _segment(i, activeColor)),
+              for (var i = 0; i < n - 1; i++) Expanded(flex: 2, child: _segment(i, activeColor, completeColor)),
               const Expanded(flex: 1, child: SizedBox.shrink()),
             ],
           ),
         ),
-        Row(children: [for (var i = 0; i < n; i++) Expanded(child: _node(i, activeColor))]),
+        Row(children: [for (var i = 0; i < n; i++) Expanded(child: _node(i, activeColor, completeColor))]),
       ],
     );
   }
 
-  Widget _segment(int i, Color activeColor) {
+  Widget _segment(int i, Color activeColor, Color completeColor) {
     final fill = completed[i] ? 1.0 : (i == currentStep ? currentFill : 0.0);
+    final color = completed[i] ? completeColor : activeColor;
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: fill),
       duration: const Duration(milliseconds: 380),
@@ -832,37 +828,37 @@ class _StepProgress extends StatelessWidget {
           value: v,
           minHeight: 3,
           backgroundColor: isDark ? Colors.white12 : Colors.black.withOpacity(0.08),
-          valueColor: AlwaysStoppedAnimation<Color>(activeColor),
+          valueColor: AlwaysStoppedAnimation<Color>(color),
         ),
       ),
     );
   }
 
-  Widget _node(int i, Color activeColor) {
+  Widget _node(int i, Color activeColor, Color completeColor) {
     final active = i == currentStep;
     final done = completed[i];
     final reachable = i <= maxStep;
 
     final Color fill = done && !active
-        ? activeColor
+        ? completeColor
         : active
-        ? (isDark ? const Color(0xFF1E1E1E) : Colors.white)
+        ? activeColor
         : reachable
-        ? (isDark ? const Color(0xFF064E3B) : const Color(0xFFE6F1EA))
-        : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF1F2F4));
+        ? (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE6F1EA))
+        : (isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF1F2F4));
 
     Widget inner;
     if (done && !active) {
-      inner = Icon(Icons.check_rounded, size: 18, color: isDark ? Colors.black : Colors.white);
-    } else if (done && active) {
-      inner = Icon(Icons.check_rounded, size: 18, color: activeColor);
+      inner = const Icon(Icons.check_rounded, size: 16, color: Colors.black);
+    } else if (active) {
+      inner = Text('${i + 1}', style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black));
     } else {
       inner = Text(
         '${i + 1}',
-        style: TextStyle(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w700,
-          color: (active || reachable) ? activeColor : (isDark ? Colors.white38 : Colors.black38),
+        style: GoogleFonts.outfit(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: reachable ? (isDark ? Colors.white : Colors.black) : (isDark ? Colors.white38 : Colors.black38),
         ),
       );
     }
@@ -875,24 +871,24 @@ class _StepProgress extends StatelessWidget {
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 250),
-            width: 34,
-            height: 34,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: fill,
-              border: active ? Border.all(color: activeColor, width: 2) : null,
-              boxShadow: active ? [BoxShadow(color: activeColor.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3))] : const [],
+              border: !active && !done && reachable ? Border.all(color: isDark ? Colors.white24 : Colors.black12, width: 1.5) : null,
+              boxShadow: active ? [BoxShadow(color: activeColor.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))] : const [],
             ),
             child: Center(child: inner),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             steps[i],
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            style: GoogleFonts.outfit(
+              fontSize: 11,
+              fontWeight: active ? FontWeight.bold : FontWeight.w500,
               color: active ? activeColor : reachable ? (isDark ? Colors.white : Colors.black87) : (isDark ? Colors.white38 : Colors.black38),
             ),
           ),
@@ -915,7 +911,7 @@ class _GradientButton extends StatelessWidget {
     required this.onPressed,
     required this.colors,
     this.loading = false,
-    this.radius = 14,
+    this.radius = 16,
     required this.isDark,
   });
 
@@ -929,7 +925,7 @@ class _GradientButton extends StatelessWidget {
         gradient: enabled ? LinearGradient(colors: colors) : null,
         color: enabled ? null : (isDark ? Colors.white10 : Colors.black.withOpacity(0.06)),
         borderRadius: BorderRadius.circular(radius),
-        boxShadow: enabled ? [BoxShadow(color: colors.first.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : const [],
+        boxShadow: enabled ? [BoxShadow(color: colors.first.withOpacity(0.4), blurRadius: 14, offset: const Offset(0, 6))] : const [],
       ),
       child: Material(
         type: MaterialType.transparency,
@@ -941,11 +937,11 @@ class _GradientButton extends StatelessWidget {
                 ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: isDark ? Colors.black : Colors.white))
                 : Text(
                     label,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                      color: enabled ? (isDark ? Colors.black : Colors.white) : (isDark ? Colors.white38 : Colors.black38),
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                      color: enabled ? Colors.white : (isDark ? Colors.white38 : Colors.black38),
                     ),
                   ),
           ),
